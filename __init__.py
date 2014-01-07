@@ -1,3 +1,7 @@
+"""
+pyofx - OrcFxAPI wrapper
+
+"""
 import time
 import os
 import tempfile
@@ -5,33 +9,36 @@ import ctypes
 import csv
 from subprocess import Popen, PIPE, STDOUT
 import StringIO
-from progress_meter import withprogress
+
 from OrcFxAPI import *
+_is64bit = ct.sizeof(ct.c_voidp) == 8
+if os.name != 'nt':
+	raise OFXError("Are you mad? Nothing here will work unless you are on Windows!")
 
 class OFXError(Exception):
 	'''Branded errors so we know it's our fault'''
 	pass
 
 def check_licence():
-	''' Returns True if a licence can be found. Usefull for polling to wait for a free licence.
-	See examples.py'''
+	''' Returns True if a licence can be found. Useful for polling to wait for a free licence.
+	See examples.py''' 
 	try:
 		_m=Model()
 		return True
-	except OrcFxAPI.DLLError:
+	except DLLError:
 		return False
 
 def get_modes(model, line, from_mode=-1, to_mode=100):
 	''' Returns a tuple with (Mode Number, Modal Period, Modal Frequency) for modal analysis of
-	line. Check specifc range of models with from_mode and to_node.'''
+	lines. Check specifc range of modes with from_mode and to_node.'''
 	model.CalculateStatics()
 	modes = Modes(line, ModalAnalysisSpecification(True, from_mode, to_mode))
 	return ((mode+1,modes.modeDetails(mode).period,
 			 1/modes.modeDetails(mode).period) for mode in range(modes.modeCount))
 
 def get_unc_path(local_name):
-	''' return the UNC path of a mapped drive. Useful becuase some distributed OrcaFlex wants
-	networked files. Returns None if the drive is not mapped (e.g. C:/)'''
+	''' return the UNC path of a mapped drive. Useful becuase some distributed OrcaFlex versions 
+	want only networked filepaths. Returns None if the drive is not mapped (e.g. C:\)'''
 	WNetGetConnection = ctypes.windll.mpr.WNetGetConnectionA
 	ERROR_MORE_DATA = 234
 	mapped_name = local_name.upper()+":"
@@ -46,25 +53,20 @@ def get_unc_path(local_name):
 		else:
 			return remote_name.value
 		
-@withprogress(1, color="green")
-def dynamics_progress_bar(m, time, start, stop, cancel):
-	
-	yield (stop-time)/stop
-
-@withprogress(1, color="green")
-def progress_bar(m, time, start, stop, cancel):
-	 
-	yield (stop-time)/stop
-
-@withprogress(1, color="green")
-def statics_progress_bar(m, progress, cancel):
-	
-	yield progress
-	
-	
-
+		
 class Model(Model):
-	''' Wrapper around OrcFxAPI.Model to add extra functionality.  '''
+	''' Wrapper around OrcFxAPI.Model to add extra functionality. 
+	
+	1. added path attribute so the location of the model on the disc can be found from:
+	
+	>>> import pyofx
+	>>> model = pyofx.Model(r"C:\path\to\data_file.dat")
+	>>> model.path
+	"C:\path\to\data_file.dat"
+	
+	2. added the open method. This will open the model in the OrcaFlex GUI, if the model
+	does not exist on disc then a windows temp file will be created. 
+	'''
 	def __init__(self,*args,**kwargs):
 		super(Model, self).__init__(*args,**kwargs)
 		if kwargs.get('filename', False):
@@ -77,11 +79,12 @@ class Model(Model):
 		else:
 			self.path = None
 		
-		self.staticsProgressHandler = statics_progress_bar
-		self.dynamicsProgressHandler = dynamics_progress_bar
 			
-	def Open(self):
-		
+	def open(self):
+		if not self.path:
+			fd, self.path = tempfile.mkstemp(suffix=".dat")
+			os.close(fd)
+			self.SaveData(self.path) 
 		with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
 						 'Software\\Orcina\\OrcaFlex\\Installation Directory',
 						  0, winreg.KEY_READ | winreg.KEY_WOW64_32KEY) as key:
@@ -110,16 +113,32 @@ class Model(Model):
 	def LoadSimulation(self,filename):
 		super(Model, self).LoadSimulation(filename)
 		self.path=filename
+		
+	def SaveSimulation(self, filename):
+		Model.SaveSimulation(self, filename)
+		self.path=filename
 	
 	
 		
 class Models(object):
 	
 	def __init__(self, directories, filetype="dat",
-				 sub=False, return_model=True, filter_function=None,failed_function=None):
-		self.dirs = []
+				 subdirectories=False, return_model=True, 
+				 filter_function=None,failed_function=None):
+		'''
+		Generator for Model objects. Requires a directory as a string or a list of directories as 
+		strings. Other arguments are:
+		
+		filetype 	     str    "dat" or "sim" to return data files or simulations (default="dat")
+		subdirectories   bool   if True then subdirectories will be included (default=False)
+		return_model     bool   if True then yeilds pyofx.Model objects, if False yeilds a string
+								represetneing the full path to the file. (default=True)
+		filter_function  func   function that returns True or False when passed the full filename
+		failed_function  func   function to be performed on failed simulation file loads [TODO]
+		'''
+		self._dirs = []
 		self.filetype = filetype
-		self.sub = sub
+		self.sub = subdirectories
 		self.return_model = return_model
 		
 		if filter_function is None:
@@ -131,7 +150,7 @@ class Models(object):
 			self.failed_function = failed_function
 		
 		if type(directories) == str:
-			self.dirs.append(directories)
+			self._dirs.append(directories)
 		else:
 			for _dir in directories:
 				if type(_dir) != str:
@@ -147,23 +166,23 @@ class Models(object):
 		
 	def __iter__(self):
 		extension = "." + self.filetype
-		def model_or_path(root, filename):
+		def model_or_path(root, filename):			
+			model_path = os.path.join(root,filename)
 			if self.return_model:
-				return Model(os.path.join(root,filename))
+				return Model(model_path)
 			else:
-				return os.path.join(root,filename)
-		for d in self.dirs:
+				return model_path
+		
+		for d in self._dirs:
 			if self.sub:
 				for r,d,f in os.walk(d):
 					for file_ in f:
-						if self.filter_function(os.path.join(r,file_)):
-							if file_.endswith(extension):
-								yield model_or_path(r,file_)
+						if self.filter_function(os.path.join(r,file_)) and file_.endswith(extension):
+							yield model_or_path(r,file_)
 			else:
 				for file_ in os.listdir(d):
-					if self.filter_function(os.path.join(d,file_)):
-						if file_.endswith(extension):
-							yield model_or_path(d,file_)
+					if self.filter_function(os.path.join(d,file_)) and file_.endswith(extension):
+						yield model_or_path(d,file_)
 
 class Jobs():
 	""" Python interface to Distributed OrcaFlex
@@ -185,14 +204,13 @@ class Jobs():
 		return unitll all jobs have completed.           
 		
 		>>> j.run(True) 
-		>>> print "All jobs finished" # This won't print unitll the simulations are complete. 
+		>>> print "All jobs finished" # This won't print unitl the simulations are complete. 
 		     
 	"""  
 	
-	def __init__(self,
-				 dllname=r"\\litapp01\FEA\Apps\Orcina\Distributed OrcaFlex\Win32\OrcFxAPI.dll"): 		
+	def __init__(self, dllname=None): 		
 		
-		self.dllname = dllname 
+		
 		self.jobs = []
 		try:
 			with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
@@ -203,7 +221,24 @@ class Jobs():
 			with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
 							 'Software\\Orcina\\DistributedOrcaFlex\\Installation Directory',
 							  0, winreg.KEY_READ | winreg.KEY_WOW64_32KEY) as key:
-				self.installation_directory = winreg.QueryValueEx(key, 'Normal')[0]
+				self.installation_directory = winreg.QueryValueEx(key, 'Normal')[0]				
+				
+		if not dllname:
+			try:
+				with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+								 'Software\\Orcina\\Distributed OrcaFlex',
+								  0, winreg.KEY_READ | winreg.KEY_WOW64_32KEY) as key:
+					self.dllname = winreg.QueryValueEx(key,'DOFWorkingDirectory')[0]
+			except WindowsError:
+				try:
+					with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+									 'Software\\Orcina\\DistributedOrcaFlex',
+									  0, winreg.KEY_READ | winreg.KEY_WOW64_32KEY) as key:
+						self.dllname = winreg.QueryValueEx(key,'DOFWorkingDirectory')[0]
+				except:
+					OFXError("An attempt to find the location of OrcFxAPI.dll failed.")
+		else:
+			self.dllname = dllname														
 		
 		self.batch_fd, self.batch_path = tempfile.mkstemp(suffix=".bat") 
 		self.batch_file = open(self.batch_path, 'wb') 
