@@ -14,7 +14,7 @@ import inspect
 from OrcFxAPI import *
 _is64bit = ct.sizeof(ct.c_voidp) == 8
 if os.name != 'nt':
-    raise OFXError("Are you mad? Nothing here will work unless you are on Windows!")
+    raise OSError("Are you mad? Nothing here will work unless you are on Windows!")
 
 class OFXError(Exception):
     '''Branded errors so we know it's our fault'''
@@ -31,7 +31,7 @@ def check_licence():
 
 def get_modes(model, line, from_mode=-1, to_mode=100):
     ''' Returns a tuple with (Mode Number, Modal Period, Modal Frequency) for modal analysis of
-    lines. Check specifc range of modes with from_mode and to_node.'''
+    lines. Check specifc range of modes with from_mode and to_mode.'''
     model.CalculateStatics()
     modes = Modes(line, ModalAnalysisSpecification(True, from_mode, to_mode))
     return ((mode+1,modes.modeDetails(mode).period,
@@ -92,18 +92,19 @@ def vessel_drawing(length, depth, beam, bow_scale=(0.9,0.95),vessel_type=None):
 	
 
 class Model(Model):
-    '''Wrapper around OrcFxAPI.Model to add extra functionality. 
+    '''
+    Wrapper around OrcFxAPI.Model to add extra functionality. 
 
-1. added path attribute so the location of the model on the disc can be found from:
-
->>> import pyofx
->>> model = pyofx.Model(r"C:\path\to\data_file.dat")
->>> model.path
-"C:\path\to\data_file.dat"
-
-2. added the open method. This will open the model in the OrcaFlex GUI, if the model
-does not exist on disc then a windows temp file will be created. 
-'''
+    1. added path attribute so the location of the model on the disc can be found from:
+    
+    >>> import pyofx
+    >>> model = pyofx.Model(r"C:\path\to\data_file.dat")
+    >>> model.path
+    "C:\path\to\data_file.dat"
+    
+    2. added the open method. This will open the model in the OrcaFlex GUI, if the model
+    does not exist on disc then a windows temp file will be created. 
+    '''
     def __init__(self,*args,**kwargs):
         super(Model, self).__init__(*args,**kwargs)
         if kwargs.get('filename', False):
@@ -136,6 +137,7 @@ does not exist on disc then a windows temp file will be created.
             raise OFXError("{} might not be a directory".format(installation_directory))
         os.chdir(installation_directory)
         try:
+            print "{} has been opened in the OrcaFlex GUI.".format(self.path)
             p = check_output(cmd_line, universal_newlines=True)
             print "{} has been closed.".format(self.path) 
         except CalledProcessError as cpe:            
@@ -149,7 +151,7 @@ does not exist on disc then a windows temp file will be created.
         super(Model, self).LoadData(filename)
         self.path=filename
     
-    def LoadSimulation(self,filename):
+    def LoadSimulation(self,filename): 
         super(Model, self).LoadSimulation(filename)
         self.path=filename
         
@@ -167,14 +169,15 @@ does not exist on disc then a windows temp file will be created.
             return filter(lambda o: (o.typeName == type_name), self.objects)
         else:
             raise OFXError(("The test must be for a string in the object name or a function. ",
-                            "The function was passed a {}".format(type(test))))
+                            "The function was passed an {}".format(type(test))))
         
         
 class Models(object):
     
     def __init__(self, directories, filetype="dat",
                  subdirectories=False, return_model=True, 
-                 filter_function=None,failed_function=None):
+                 filter_function=None,failed_function=None,
+                 virtual_logging=False):
         '''
         Generator for Model objects. Requires a directory as a string or a list of directories as 
         strings. Other arguments are:
@@ -183,15 +186,20 @@ class Models(object):
         subdirectories   bool   if True then subdirectories will be included (default=False)
         return_model     bool   if True then yeilds pyofx.Model objects, if False yeilds a string
                                 represetneing the full path to the file. (default=True)
+        virtual_logging  bool   if True all returned Model instances will have virtual logging
+                                enabled. Makes post processing of large sim files mmmuch quicker.
+                                (default=False)
         filter_function  func   function that returns True or False when passed the full filename.
         						only models that pass the test will be returned.
         failed_function  func   function to be performed on failed simulation file loads [TODO]
         '''
         self._dirs = []
         self.filetype = filetype
+        if self.filetype not in ['sim','dat']:
+            raise OFXError("filetype must be 'sim' or 'dat'. [Got {}]".format(self.filetype))
         self.sub = subdirectories
         self.return_model = return_model
-        
+        self.virtual_logging = virtual_logging        
         if filter_function is None:
             self.filter_function = lambda s: True
         else:
@@ -204,7 +212,7 @@ class Models(object):
             self._dirs.append(directories)
         else:
             for _dir in directories:
-                if type(_dir) != str:
+                if type(_dir) not in [str, unicode]:
                     raise OFXError("""Directory argurments need to be strings.
                      {} is a {}.""".format(_dir,type(_dir)))
                 else:
@@ -220,22 +228,26 @@ class Models(object):
         def model_or_path(root, filename):          
             model_path = os.path.join(root,filename)
             if self.return_model:
-                return Model(model_path)
+                if self.virtual_logging:
+                    _model = Model()                    
+                    _model.UseVirtualLogging()
+                    if self.filetype == "sim":
+                        _model.LoadSimulation(model_path)
+                    else:
+                        _model.LoadData(model_path)
+                    return _model
+                else:
+                    return Model(model_path)
             else:
                 return model_path
-        
+        test_fun = lambda _f:self.filter_function(os.path.join(d,_f)) and _f.endswith(extension)
         for d in self._dirs:
             if self.sub:
-                for r,d,f in os.walk(d):
-                    for file_ in f:
-                        if self.filter_function(os.path.join(r,file_))\
-                         and file_.endswith(extension):
-                            yield model_or_path(r,file_)
+                for file_ in filter(test_fun,[f for r,d,f in os.walk(d)]):
+                    yield model_or_path(r,file_)
             else:
-                for file_ in os.listdir(d):
-                    if self.filter_function(os.path.join(d,file_))\
-                     and file_.endswith(extension):
-                        yield model_or_path(d,file_)
+                for file_ in filter(test_fun,os.listdir(d)):
+                    yield model_or_path(d,file_)
 
 class Jobs():
     """ Python interface to Distributed OrcaFlex
@@ -294,7 +306,7 @@ class Jobs():
         
         self.batch_fd, self.batch_path = tempfile.mkstemp(suffix=".bat") 
         self.batch_file = open(self.batch_path, 'wb') 
-        self.batch_file.write('''echo off\r\n cd "%s"\r\n''' % self.installation_directory)
+        self.batch_file.write('''echo off\r\ncd "%s"\r\n''' % self.installation_directory)
         self.file_list_fd, self.file_list_path = tempfile.mkstemp(suffix=".txt") 
         self.file_list_file = open(self.file_list_path, 'wb') 
               
@@ -313,7 +325,7 @@ class Jobs():
             if get_unc_path(filepath[0]):
                 filepath = get_unc_path(filepath[0]) + filepath[2:]
             else:   
-                raise OFXError("{} must be a network filepath (or mapped drive).".foramt(filepath)) 
+                raise OFXError("{} must be a network filepath (or mapped drive).".format(filepath)) 
         try: 
             a = open(filepath) 
             a.close() 
@@ -330,8 +342,10 @@ class Jobs():
         To run statics only use statics=True
         """        
        
-        cmdline_template = 'dofcmd -add {}{}-dllname="{}" "{}"\r\n'            
-        cmdline = cmdline_template.format("-wait " if wait else "",
+        cmdline_template = '"{}" -add {}{}-dllname="{}" "{}"\r\n'            
+        cmdline = cmdline_template.format(os.path.join(self.installation_directory,
+                                                    "dofcmd.exe"),
+                                          "-wait " if wait else "",
                         "-statics " if statics else "",
                         self.dllname,self.file_list_path)
         
