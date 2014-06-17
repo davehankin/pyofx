@@ -7,7 +7,7 @@ def read(fname):
 
 setup(
     name = "pyOfx",
-    version = "0.0.6",
+    version = "0.0.11",
     author = "Steven Rossiter",
     author_email = "steve@flexsis.co.uk",
     description = ("A wrapper around OrcFxAPI by Orcina "

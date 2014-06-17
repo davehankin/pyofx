@@ -7,6 +7,11 @@ PYOFX
 
 Documentation to be completed...
 
+CHANGELOG
+=========
+
+0.0.10 - Added gamma_dnv function
+
 The MIT License (MIT)
 
 Copyright (c) 2014 FLEXSIS

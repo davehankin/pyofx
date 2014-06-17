@@ -1,6 +1,6 @@
 Metadata-Version: 1.1
 Name: pyOfx
-Version: 0.0.6
+Version: 0.0.11
 Summary: A wrapper around OrcFxAPI by Orcina to add extra functionality.
 Home-page: http://packages.python.org/pyofx
 Author: Steven Rossiter
@@ -14,6 +14,11 @@ Description: PYOFX
         **You will need to have OrcaFlex and the Python API installed before any of this will work**
         
         Documentation to be completed...
+        
+        CHANGELOG
+        =========
+        
+        0.0.10 - Added gamma_dnv function
         
         The MIT License (MIT)
         

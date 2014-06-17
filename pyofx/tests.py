@@ -6,6 +6,32 @@ from os import path
 import shutil
 from itertools import product
 
+class TestModelAttributes(unittest.TestCase):
+
+    def setUp(self):
+        self._temp_dir = tempfile.mkdtemp()
+        self._model_name = "Temp Model"        
+
+    def test_path_attributes(self):
+        self.dat, self.sim = dat_sim_paths(self._temp_dir, self._model_name)
+        m=Model()
+        m.SaveData(self.dat)
+        self.assertEqual(m.path, self.dat)
+        self.assertEqual(self._model_name, m.model_name)
+        del m
+        m=Model(self.dat)
+        self.assertEqual(m.path, self.dat)
+        self.assertEqual(self._model_name, m.model_name)
+        m.general.StageDuration=[1,1]
+        m.RunSimulation()
+        m.SaveSimulation(self.sim)
+        self.assertEqual(m.path, self.sim)
+        self.assertEqual(self._model_name, m.model_name)
+        del m
+        m=Model(self.sim)
+        self.assertEqual(m.path, self.sim)
+        self.assertEqual(self._model_name, m.model_name)
+
 class TestObjectFilter(unittest.TestCase):
 
     def setUp(self):
