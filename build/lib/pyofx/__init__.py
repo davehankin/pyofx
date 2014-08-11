@@ -79,9 +79,12 @@ def get_unc_path(local_name):
             return remote_name.value
 
 
-def dat_sim_paths(directory, name):
+def dat_sim_paths(directory, name, yml=False):
     """Tuple containing full .dat and .sim filepath for filename `name` in `directory`"""
-    return os.path.join(directory, name + '.dat'), os.path.join(directory, name + '.sim')
+    if yml:
+        return os.path.join(directory, name + '.yml'), os.path.join(directory, name + '.sim')
+    else:
+        return os.path.join(directory, name + '.dat'), os.path.join(directory, name + '.sim')
 
 
 def vessel_drawing(length, depth, beam, bow_scale=(0.9, 0.95), vessel_type=None):
@@ -121,13 +124,14 @@ def buoy_drawing(size, ofx_object=None):
     _z = [1, 1, 1, 1, -1, -1, -1, -1]
     _sx = [float(size) * x for x in _x]
     _sy = [float(size) * y for y in _y]
-    _sz = [float(size) * z for z in _z]   
+    _sz = [float(size) * z for z in _z]
     if ofx_object:
-        ofx_object.VertexX=_sx
-        ofx_object.VertexY=_sy
-        ofx_object.VertexZ=_sz
+        ofx_object.VertexX = _sx
+        ofx_object.VertexY = _sy
+        ofx_object.VertexZ = _sz
     else:
-        _xyz = zip([str(x) for x in _sx], [str(y) for y in _sy], [str(z) for z in _sz])
+        _xyz = zip([str(x) for x in _sx], [str(y)
+                   for y in _sy], [str(z) for z in _sz])
         s = ""
         for xyz in _xyz:
             s += "\t".join(xyz) + "\n"
@@ -227,7 +231,7 @@ class Model(Model):
 
         option to add a test function to further filter the list
         """
-        if type(test) == str:
+        if isinstance(test, basestring):
             return filter(
                 lambda o: (o.typeName == type_name) and (test in o.Name),
                 self.objects)
@@ -237,8 +241,8 @@ class Model(Model):
             return filter(lambda o: (o.typeName == type_name), self.objects)
         else:
             raise OFXError(
-                ("The test must be for a string in the object name or a function. ",
-                 "The function was passed an {}".format(type(test))))
+                ("The test must be for a string in the object name or a filter function. ",
+                 "Was passed an {}".format(type(test))))
 
 
 class Models(object):
@@ -251,15 +255,15 @@ class Models(object):
         Generator for Model objects. Requires a directory as a string or a list of directories as
         strings. Other arguments are:
 
-        filetype         str    "dat" or "sim" to return data files or simulations (default="dat")
+        filetype         str    "dat" or "sim" to yield data files or simulations (default="dat")
         subdirectories   bool   if True then subdirectories will be included (default=False)
-        return_model     bool   if True then yeilds pyofx.Model objects, if False yeilds a string
-                                represetneing the full path to the file. (default=True)
+        return_model     bool   if True then yield pyofx.Model objects, if False yield a string
+                                of the full path to the file. (default=True)
         virtual_logging  bool   if True all returned Model instances will have virtual logging
                                 enabled. Makes post processing of large sim files mmmuch quicker.
                                 (default=False)
         filter_function  func   function that returns True or False when passed the full filename.
-                                                        only models that pass the test will be returned.
+                                only models that pass the test will be returned.
         failed_function  func   function to be performed on failed simulation file loads [TODO]
         """
         self._dirs = []
@@ -271,18 +275,18 @@ class Models(object):
         self.return_model = return_model
         self.virtual_logging = virtual_logging
         if filter_function is None:
-            self.filter_function = lambda s: True
+            self.filter_function = lambda _: True
         else:
             self.filter_function = filter_function
 
         if failed_function and filetype == "sim":
             self.failed_function = failed_function
 
-        if type(directories) in [str, unicode]:
+        if isinstance(directories,basestring):
             self._dirs.append(directories)
         else:
             for _dir in directories:
-                if type(_dir) not in [str, unicode]:
+                if not isinstance(_dir,basestring):
                     raise OFXError("""Directory argurments need to be strings.
                      {} is a {}.""".format(_dir, type(_dir)))
                 else:

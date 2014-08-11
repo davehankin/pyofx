@@ -10,6 +10,9 @@ Documentation to be completed...
 CHANGELOG
 =========
 
+0.0.12 - Fixed test for string in objects_of_type to include unicode,
+	     addeed yml option to dat_sim_paths
+0.0.11 - Added buoy_drawing
 0.0.10 - Added gamma_dnv function
 
 The MIT License (MIT)
