@@ -3,7 +3,7 @@ from __init__ import *
 import tempfile
 import random
 
-class TestObjectFilter(unittest.TestCase):
+class TestModel(unittest.TestCase):
 
     def setUp(self):
         self.m=Model()

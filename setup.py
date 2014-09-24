@@ -6,12 +6,12 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(
-    name = "pyOfx",
-    version = "0.0.11",
-    author = "Steven Rossiter",
-    author_email = "steve@flexsis.co.uk",
-    description = ("A wrapper around OrcFxAPI by Orcina "
-                                   "to add extra functionality."),
+    name="pyOfx",
+    version="0.0.14",
+    author="Steven Rossiter",
+    author_email="steve@flexsis.co.uk",
+    description=("A wrapper around OrcFxAPI by Orcina "
+                 "to add extra functionality."),
     license = "MIT",
     keywords = "orcaflex api wrapper subsea engineering",
     url = "http://packages.python.org/pyofx",

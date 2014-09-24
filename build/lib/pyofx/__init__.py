@@ -49,8 +49,9 @@ def check_licence():
 
 def get_modes(model, line, from_mode=-1, to_mode=100):
     """List of (Mode Number, Modal Period, Modal Frequency) tuples for modal analysis of
-    lines. Check specifc range of modes with from_mode and to_mode."""
-    model.CalculateStatics()
+    lines. Check specific range of modes with from_mode and to_mode."""
+    if model.state is not ModelState.InStaticState:
+        model.CalculateStatics()
     modes = Modes(line, ModalAnalysisSpecification(True, from_mode, to_mode))
     return [(mode + 1, modes.modeDetails(mode).period,
              1 / modes.modeDetails(mode).period) for mode in range(modes.modeCount)]
@@ -59,7 +60,7 @@ def get_modes(model, line, from_mode=-1, to_mode=100):
 def get_unc_path(local_name):
     """the UNC path of a mapped drive. 
 
-    Useful becuase some distributed OrcaFlex versions
+    Useful because some distributed OrcaFlex versions
     want only networked filepaths. Returns None if the drive is not mapped (e.g. C:\)
     """
     WNetGetConnection = ctypes.windll.mpr.WNetGetConnectionA
@@ -80,7 +81,9 @@ def get_unc_path(local_name):
 
 
 def dat_sim_paths(directory, name, yml=False):
-    """Tuple containing full .dat and .sim filepath for filename `name` in `directory`"""
+    """Tuple containing full .dat (or .yml if yml=True) and .sim filepath for 
+    filename `name` in `directory`.
+    """
     if yml:
         return os.path.join(directory, name + '.yml'), os.path.join(directory, name + '.sim')
     else:
@@ -93,7 +96,7 @@ def vessel_drawing(length, depth, beam, bow_scale=(0.9, 0.95), vessel_type=None)
     Given a vessel of specifed length, depth and beam. Bow shape determined by the bow_scale
     parameter. See examples vessel_scaling.png for sketch
 
-    if an OrcaFlexObject of typeName otVesselType is passed as the vessel_type parameter then
+    if an `OrcaFlexObject` with `typeName=otVesselType` is passed as the vessel_type parameter then
     the drawing will be applied.
     """
     # TODO: vessel_scaling.png
@@ -101,16 +104,16 @@ def vessel_drawing(length, depth, beam, bow_scale=(0.9, 0.95), vessel_type=None)
     l = length / 2.0
     d = depth / 2.0
     b = beam / 2.0
-    cuboid_x = [l, l, -l, -l, l, l, l, -l, -l, l]
+    x = [l, l, -l, -l, l, l, l, -l, -l, l]
     y = [0, b, b, -b, -b, 0, b, b, -b, -b]
     z = [d] * 5 + [-d] * 5
 
     bow_scaling = [1, bow_scale[0], 1, 1, bow_scale[0],
                    bow_scale[1], bow_scale[0], 1, 1, bow_scale[0]]
 
-    z = [s * _x for s, _x in zip(bow_scaling, cuboid_x)]
+    z = [s * _x for s, _x in zip(bow_scaling, x)]
 
-    if vessel_type is not None:
+    if vessel_type and vessel_type.typeName == otVesselType:
         vessel_type.VertexX = x
         vessel_type.VertexY = y
         vessel_type.VertexZ = z
@@ -119,13 +122,20 @@ def vessel_drawing(length, depth, beam, bow_scale=(0.9, 0.95), vessel_type=None)
 
 
 def buoy_drawing(size, ofx_object=None):
+    """scale the standard 6D buoy cuboid to `size`
+
+    If ofx_object is provided then the object drawing will be changed
+    otherwise the correct array is copied to the clipboard to paste 
+    into the 6D Buoy drawing table.  
+
+    """
     _x = [1, -1, -1, 1, 1, -1, -1, 1]
     _y = [1, 1, -1, -1, 1, 1, -1, -1]
     _z = [1, 1, 1, 1, -1, -1, -1, -1]
     _sx = [float(size) * x for x in _x]
     _sy = [float(size) * y for y in _y]
     _sz = [float(size) * z for z in _z]
-    if ofx_object:
+    if ofx_object and ofx_object.typeName == ot6DBuoy:
         ofx_object.VertexX = _sx
         ofx_object.VertexY = _sy
         ofx_object.VertexZ = _sz
@@ -153,7 +163,8 @@ class Model(Model):
     >>> model.path
     "C:\path\to\data_file.dat"
 
-    2. added a model_name attribute (added in v0.0.9)
+    2. added a model_name attribute (added in v0.0.9) of the file name without path or
+    extensions:
 
     >>> import pyofx
     >>> model = pyofx.Model(r"C:\path\to\data_file.dat")
@@ -163,8 +174,16 @@ class Model(Model):
     3. added the open method. This will open the model in the OrcaFlex GUI, if the model
     does not exist on disc then a windows temp file will be created.
 
-    4. added objects_of_type() to return a list of objects in the model of a certain types/
+    4. added `objects_of_type()` to return a list of objects in the model of a certain types/
     e.g. model.objects_of_type('Line')
+
+    5. added attribute `lines`, shortcut to objects_of_type('Line')
+
+    6. added attribute `vessels`, shortcut to objects_of_type('Vessel')
+
+    7. added attribute `six_d_buoys`, shortcut to objects_of_type('6DBuoy')
+
+
     """
 
     def __init__(self, *args, **kwargs):
@@ -231,18 +250,36 @@ class Model(Model):
 
         option to add a test function to further filter the list
         """
+        typed_objects = filter(
+            lambda o: (o.typeName == type_name), self.objects)
         if isinstance(test, basestring):
-            return filter(
-                lambda o: (o.typeName == type_name) and (test in o.Name),
-                self.objects)
+            return filter(lambda o: test in o.Name, typed_objects)
         elif inspect.isfunction(test):
-            return filter(test, filter(lambda o: (o.typeName == type_name), self.objects))
+            return filter(test, typed_objects)
         elif test is None:
-            return filter(lambda o: (o.typeName == type_name), self.objects)
+            return typed_objects
         else:
             raise OFXError(
                 ("The test must be for a string in the object name or a filter function. ",
                  "Was passed an {}".format(type(test))))
+
+    @property
+    def lines(self):
+        """ all the objects of type otLine """
+
+        return self.objects_of_type('Line')
+
+    @property
+    def vessels(self):
+        """ all the objects of type otLine """
+
+        return self.objects_of_type('Vessel')
+
+    @property
+    def six_d_buoys(self):
+        """ all the objects of type ot6DBuoy """
+
+        return self.objects_of_type('6D Buoy')
 
 
 class Models(object):
@@ -268,9 +305,9 @@ class Models(object):
         """
         self._dirs = []
         self.filetype = filetype
-        if self.filetype not in ['sim', 'dat']:
+        if self.filetype not in ['sim', 'dat', 'yml']:
             raise OFXError(
-                "filetype must be 'sim' or 'dat'. [Got {}]".format(self.filetype))
+                "filetype must be 'sim', 'dat' or 'yml' not '{}'".format(self.filetype))
         self.sub = subdirectories
         self.return_model = return_model
         self.virtual_logging = virtual_logging
@@ -279,15 +316,21 @@ class Models(object):
         else:
             self.filter_function = filter_function
 
-        if failed_function and filetype == "sim":
-            self.failed_function = failed_function
+        # TODO: Fix so that return_model=False cannot be checked for failed
+        # simulation.
 
-        if isinstance(directories,basestring):
+        if return_model and failed_function and filetype == "sim":
+            self.failed_function = failed_function
+        elif failed_function:
+            raise OFXError(
+                "Failed failed_function needs to be called on .sim files")
+
+        if isinstance(directories, basestring):
             self._dirs.append(directories)
         else:
             for _dir in directories:
-                if not isinstance(_dir,basestring):
-                    raise OFXError("""Directory argurments need to be strings.
+                if not isinstance(_dir, basestring):
+                    raise OFXError("""Directory arguments need to be strings.
                      {} is a {}.""".format(_dir, type(_dir)))
                 else:
                     if os.path.isdir(_dir):
@@ -315,15 +358,16 @@ class Models(object):
                     return Model(model_path)
             else:
                 return model_path
-        test_fun = lambda _f: self.filter_function(
-            os.path.join(d, _f)) and _f.endswith(extension)
+
+        test_fun = lambda _rf: self.filter_function(
+            os.path.join(_rf[0], _rf[1])) and _rf[1].endswith(extension)
         for d in self._dirs:
             if self.sub:
-                for file_ in filter(test_fun, [f for r, d, f in os.walk(d)]):
-                    yield model_or_path(r, file_)
+                paths = [(r, f) for r, d, f in os.walk(d)]
             else:
-                for file_ in filter(test_fun, os.listdir(d)):
-                    yield model_or_path(d, file_)
+                paths = [(d, f) for f in os.listdir(d)]
+            for root, file_ in filter(test_fun, paths):
+                yield model_or_path(root, file_)
 
 
 class Jobs():
