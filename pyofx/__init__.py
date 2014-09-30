@@ -90,6 +90,19 @@ def dat_sim_paths(directory, name, yml=False):
         return os.path.join(directory, name + '.dat'), os.path.join(directory, name + '.sim')
 
 
+def xyz_to_clipboard(x,y,z):
+    """ place string for xyz arrary on the clipbaord to paste in drawing form"""
+    _xyz = zip([str(x) for x in _sx], [str(y)
+               for y in _sy], [str(z) for z in _sz])
+    s = ""
+    for xyz in _xyz:
+        s += "\t".join(xyz) + "\n"
+    r = Tk()
+    r.withdraw()
+    r.clipboard_clear()
+    r.clipboard_append(s)
+    r.destroy()
+
 def vessel_drawing(length, depth, beam, bow_scale=(0.9, 0.95), vessel_type=None):
     """scale the default OrcaFlex vessel type drawing
 
@@ -97,7 +110,8 @@ def vessel_drawing(length, depth, beam, bow_scale=(0.9, 0.95), vessel_type=None)
     parameter. See examples vessel_scaling.png for sketch
 
     if an `OrcaFlexObject` with `typeName=otVesselType` is passed as the vessel_type parameter then
-    the drawing will be applied.
+    the drawing will be applied otherwise the correct array is copied to the clipboard to paste 
+    into the vessel type drawing table.  
     """
     # TODO: vessel_scaling.png
 
@@ -118,7 +132,7 @@ def vessel_drawing(length, depth, beam, bow_scale=(0.9, 0.95), vessel_type=None)
         vessel_type.VertexY = y
         vessel_type.VertexZ = z
     else:
-        return x, y, z
+        xyz_to_clipboard(x,y,z)
 
 
 def buoy_drawing(size, ofx_object=None):
@@ -140,16 +154,7 @@ def buoy_drawing(size, ofx_object=None):
         ofx_object.VertexY = _sy
         ofx_object.VertexZ = _sz
     else:
-        _xyz = zip([str(x) for x in _sx], [str(y)
-                   for y in _sy], [str(z) for z in _sz])
-        s = ""
-        for xyz in _xyz:
-            s += "\t".join(xyz) + "\n"
-        r = Tk()
-        r.withdraw()
-        r.clipboard_clear()
-        r.clipboard_append(s)
-        r.destroy()
+        xyz_to_clipboard(x,y,z)
 
 
 class Model(Model):
@@ -158,24 +163,33 @@ class Model(Model):
 
     1. added path attribute so the location of the model on the disc can be found from:
 
-    >>> import pyofx
-    >>> model = pyofx.Model(r"C:\path\to\data_file.dat")
+    >>> model = Model(r"C:\path\to\data_file.dat")
     >>> model.path
     "C:\path\to\data_file.dat"
 
     2. added a model_name attribute (added in v0.0.9) of the file name without path or
     extensions:
 
-    >>> import pyofx
-    >>> model = pyofx.Model(r"C:\path\to\data_file.dat")
+    >>> model = Model(r"C:\path\to\data_file.dat")
     >>> model.model_name
     "data_file"
 
     3. added the open method. This will open the model in the OrcaFlex GUI, if the model
-    does not exist on disc then a windows temp file will be created.
+    does not exist on disc then a windows temp file will be created. Won't return until 
+    the OrcaFlex.exe instance is closed.
+
+    >>> model = Model()
+    >>> model.open() # Opens a temp file in OrcaFlex.exe
 
     4. added `objects_of_type()` to return a list of objects in the model of a certain types/
     e.g. model.objects_of_type('Line')
+
+    >>> model = Model()
+    >>> model.CreateObject(otVessel)
+    >>> for v in model.objects_of_type('Vessel','Bigger Boat'):
+    ...     print v.name
+    "Bigger Boat"
+
 
     5. added attribute `lines`, shortcut to objects_of_type('Line')
 
