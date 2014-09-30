@@ -143,7 +143,10 @@ class TestModels(unittest.TestCase):
 
 if __name__ == '__main__':
     import sys
-    current_module = sys.modules[__name__]
-    test_suite = unittest.loader.findTestCases(current_module)
-    runner = unittest.TextTestRunner()
-    runner.run(test_suite)
+    if check_licence:
+        current_module = sys.modules[__name__]
+        test_suite = unittest.loader.findTestCases(current_module)
+        runner = unittest.TextTestRunner()
+        runner.run(test_suite)
+    else:
+        raise Exception("No OrcaFlex License!")

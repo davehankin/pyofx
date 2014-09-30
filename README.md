@@ -9,6 +9,7 @@ Documentation to be completed...
 
 CHANGELOG
 =========
+0.0.15 - Added clipboard support to vessel_drawing
 0.0.14 - Fix for [#1](https://github.com/FLEXSIS/pyofx/issues/1)  
 0.0.13 - Added Model.lines, Model.vessels, Model.six_d_buoys attributes
          various performance enhancements  
