@@ -1,0 +1,664 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>pyofx &mdash; pyofx 0.0.16 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.0.16',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="pyofx 0.0.16 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">pyofx 0.0.16 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for pyofx</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">Tkinter</span> <span class="kn">import</span> <span class="n">Tk</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="kn">import</span> <span class="nn">ctypes</span>
+<span class="kn">import</span> <span class="nn">csv</span>
+<span class="kn">from</span> <span class="nn">subprocess</span> <span class="kn">import</span> <span class="n">Popen</span><span class="p">,</span> <span class="n">PIPE</span><span class="p">,</span> <span class="n">STDOUT</span><span class="p">,</span> <span class="n">check_output</span><span class="p">,</span> <span class="n">CalledProcessError</span>
+<span class="kn">import</span> <span class="nn">StringIO</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">math</span>
+
+<span class="kn">from</span> <span class="nn">OrcFxAPI</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="n">_is64bit</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">sizeof</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">c_voidp</span><span class="p">)</span> <span class="o">==</span> <span class="mi">8</span>
+
+
+<div class="viewcode-block" id="OFXError"><a class="viewcode-back" href="../api_docs.html#pyofx.OFXError">[docs]</a><span class="k">class</span> <span class="nc">OFXError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;Branded errors so we know it&#39;s our fault&quot;&quot;&quot;</span>
+    <span class="k">pass</span>
+
+</div>
+<div class="viewcode-block" id="gamma_dnv"><a class="viewcode-back" href="../api_docs.html#pyofx.gamma_dnv">[docs]</a><span class="k">def</span> <span class="nf">gamma_dnv</span><span class="p">(</span><span class="n">h_s</span><span class="p">,</span> <span class="n">t_p</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;the peak shape parameter (gamma) according to DNV-RP-H103 2.2.6.9&quot;&quot;&quot;</span>
+    <span class="n">hs13</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">13</span> <span class="o">*</span> <span class="n">h_s</span><span class="p">)</span>
+    <span class="n">hs25</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">25</span> <span class="o">*</span> <span class="n">h_s</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">t_p</span> <span class="o">&lt;=</span> <span class="n">hs13</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">5.0</span>
+    <span class="k">elif</span> <span class="n">t_p</span> <span class="o">&gt;</span> <span class="n">hs25</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">1.0</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mf">5.75</span> <span class="o">-</span> <span class="p">(</span><span class="mf">1.15</span> <span class="o">*</span> <span class="p">(</span><span class="n">t_p</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">h_s</span><span class="p">))))</span>
+
+</div>
+<div class="viewcode-block" id="check_licence"><a class="viewcode-back" href="../api_docs.html#pyofx.check_licence">[docs]</a><span class="k">def</span> <span class="nf">check_licence</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;true if a licence can be found</span>
+
+<span class="sd">    Useful for polling to wait for a free licence.</span>
+<span class="sd">    See examples.py&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">_m</span> <span class="o">=</span> <span class="n">Model</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">True</span>
+    <span class="k">except</span> <span class="n">DLLError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+</div>
+<div class="viewcode-block" id="get_modes"><a class="viewcode-back" href="../api_docs.html#pyofx.get_modes">[docs]</a><span class="k">def</span> <span class="nf">get_modes</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">line</span><span class="p">,</span> <span class="n">from_mode</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">to_mode</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;List of (Mode Number, Modal Period, Modal Frequency) tuples for modal analysis of</span>
+<span class="sd">    lines. Check specific range of modes with from_mode and to_mode.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">ModelState</span><span class="o">.</span><span class="n">InStaticState</span><span class="p">:</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">CalculateStatics</span><span class="p">()</span>
+    <span class="n">modes</span> <span class="o">=</span> <span class="n">Modes</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">ModalAnalysisSpecification</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="n">from_mode</span><span class="p">,</span> <span class="n">to_mode</span><span class="p">))</span>
+    <span class="k">return</span> <span class="p">[(</span><span class="n">mode</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">modes</span><span class="o">.</span><span class="n">modeDetails</span><span class="p">(</span><span class="n">mode</span><span class="p">)</span><span class="o">.</span><span class="n">period</span><span class="p">,</span>
+             <span class="mi">1</span> <span class="o">/</span> <span class="n">modes</span><span class="o">.</span><span class="n">modeDetails</span><span class="p">(</span><span class="n">mode</span><span class="p">)</span><span class="o">.</span><span class="n">period</span><span class="p">)</span> <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">modes</span><span class="o">.</span><span class="n">modeCount</span><span class="p">)]</span>
+
+</div>
+<div class="viewcode-block" id="get_unc_path"><a class="viewcode-back" href="../api_docs.html#pyofx.get_unc_path">[docs]</a><span class="k">def</span> <span class="nf">get_unc_path</span><span class="p">(</span><span class="n">local_name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;the UNC path of a mapped drive. </span>
+
+<span class="sd">    Useful because some distributed OrcaFlex versions</span>
+<span class="sd">    want only networked filepaths. Returns None if the drive is not mapped (e.g. C:\)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">WNetGetConnection</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">windll</span><span class="o">.</span><span class="n">mpr</span><span class="o">.</span><span class="n">WNetGetConnectionA</span>
+    <span class="n">ERROR_MORE_DATA</span> <span class="o">=</span> <span class="mi">234</span>
+    <span class="n">mapped_name</span> <span class="o">=</span> <span class="n">local_name</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">+</span> <span class="s">&quot;:&quot;</span>
+    <span class="n">length</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_long</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">remote_name</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">WNetGetConnection</span><span class="p">(</span>
+        <span class="n">mapped_name</span><span class="p">,</span> <span class="n">remote_name</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">byref</span><span class="p">(</span><span class="n">length</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">result</span> <span class="o">==</span> <span class="n">ERROR_MORE_DATA</span><span class="p">:</span>
+        <span class="n">remote_name</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">length</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">WNetGetConnection</span><span class="p">(</span>
+            <span class="n">mapped_name</span><span class="p">,</span> <span class="n">remote_name</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">byref</span><span class="p">(</span><span class="n">length</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">result</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">remote_name</span><span class="o">.</span><span class="n">value</span>
+
+</div>
+<div class="viewcode-block" id="dat_sim_paths"><a class="viewcode-back" href="../api_docs.html#pyofx.dat_sim_paths">[docs]</a><span class="k">def</span> <span class="nf">dat_sim_paths</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">yml</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Tuple containing full .dat (or .yml if yml=True) and .sim filepath for </span>
+<span class="sd">    filename `name` in `directory`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">yml</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">name</span> <span class="o">+</span> <span class="s">&#39;.yml&#39;</span><span class="p">),</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">name</span> <span class="o">+</span> <span class="s">&#39;.sim&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">name</span> <span class="o">+</span> <span class="s">&#39;.dat&#39;</span><span class="p">),</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">name</span> <span class="o">+</span> <span class="s">&#39;.sim&#39;</span><span class="p">)</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_xyz_to_clipboard</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; place string for xyz arrary on the clipbaord to paste in drawing form&quot;&quot;&quot;</span>
+    <span class="n">_xyz</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">_x</span><span class="p">)</span> <span class="k">for</span> <span class="n">_x</span> <span class="ow">in</span> <span class="n">x</span><span class="p">],</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">_y</span><span class="p">)</span>
+               <span class="k">for</span> <span class="n">_y</span> <span class="ow">in</span> <span class="n">y</span><span class="p">],</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">_z</span><span class="p">)</span> <span class="k">for</span> <span class="n">_z</span> <span class="ow">in</span> <span class="n">z</span><span class="p">])</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">xyz</span> <span class="ow">in</span> <span class="n">_xyz</span><span class="p">:</span>
+        <span class="n">s</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\t</span><span class="s">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">xyz</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">Tk</span><span class="p">()</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">withdraw</span><span class="p">()</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">clipboard_clear</span><span class="p">()</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">clipboard_append</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>
+
+<div class="viewcode-block" id="vessel_drawing"><a class="viewcode-back" href="../api_docs.html#pyofx.vessel_drawing">[docs]</a><span class="k">def</span> <span class="nf">vessel_drawing</span><span class="p">(</span><span class="n">length</span><span class="p">,</span> <span class="n">depth</span><span class="p">,</span> <span class="n">beam</span><span class="p">,</span> <span class="n">bow_scale</span><span class="o">=</span><span class="p">(</span><span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.95</span><span class="p">),</span> <span class="n">vessel_type</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;scale the default OrcaFlex vessel type drawing</span>
+
+<span class="sd">    Given a vessel of specifed length, depth and beam. Bow shape determined by the bow_scale</span>
+<span class="sd">    parameter.</span>
+
+<span class="sd">    if an `OrcaFlexObject` with `typeName=otVesselType` is passed as the vessel_type parameter then</span>
+<span class="sd">    the drawing will be applied otherwise the correct array is copied to the clipboard to paste </span>
+<span class="sd">    into the vessel type drawing table.  </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+
+    <span class="n">l</span> <span class="o">=</span> <span class="n">length</span> <span class="o">/</span> <span class="mf">2.0</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">depth</span> <span class="o">/</span> <span class="mf">2.0</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">beam</span> <span class="o">/</span> <span class="mf">2.0</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="n">l</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="o">-</span><span class="n">l</span><span class="p">,</span> <span class="o">-</span><span class="n">l</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="o">-</span><span class="n">l</span><span class="p">,</span> <span class="o">-</span><span class="n">l</span><span class="p">,</span> <span class="n">l</span><span class="p">]</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="o">-</span><span class="n">b</span><span class="p">,</span> <span class="o">-</span><span class="n">b</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="o">-</span><span class="n">b</span><span class="p">,</span> <span class="o">-</span><span class="n">b</span><span class="p">]</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">*</span> <span class="mi">5</span> <span class="o">+</span> <span class="p">[</span><span class="o">-</span><span class="n">d</span><span class="p">]</span> <span class="o">*</span> <span class="mi">5</span>
+
+    <span class="n">bow_scaling</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">bow_scale</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">bow_scale</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                   <span class="n">bow_scale</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">bow_scale</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">bow_scale</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span> <span class="o">*</span> <span class="n">_x</span> <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">_x</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">bow_scaling</span><span class="p">,</span> <span class="n">x</span><span class="p">)]</span>
+
+    <span class="k">if</span> <span class="n">vessel_type</span> <span class="ow">and</span> <span class="n">vessel_type</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">otVesselType</span><span class="p">:</span>
+        <span class="n">vessel_type</span><span class="o">.</span><span class="n">VertexX</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="n">vessel_type</span><span class="o">.</span><span class="n">VertexY</span> <span class="o">=</span> <span class="n">y</span>
+        <span class="n">vessel_type</span><span class="o">.</span><span class="n">VertexZ</span> <span class="o">=</span> <span class="n">z</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">_xyz_to_clipboard</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="buoy_drawing"><a class="viewcode-back" href="../api_docs.html#pyofx.buoy_drawing">[docs]</a><span class="k">def</span> <span class="nf">buoy_drawing</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">ofx_object</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;scale the standard 6D buoy cuboid to width and height of `size` </span>
+<span class="sd">    (the default size is 6m)</span>
+
+<span class="sd">    If ofx_object is provided then the object drawing will be changed</span>
+<span class="sd">    otherwise the correct array is copied to the clipboard to paste </span>
+<span class="sd">    into the 6D Buoy drawing table.  </span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_x</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">_y</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">_z</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">_sx</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">size</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span> <span class="o">*</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">_x</span><span class="p">]</span>
+    <span class="n">_sy</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">size</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span> <span class="o">*</span> <span class="n">y</span> <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">_y</span><span class="p">]</span>
+    <span class="n">_sz</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">size</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span> <span class="o">*</span> <span class="n">z</span> <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="n">_z</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">ofx_object</span> <span class="ow">and</span> <span class="n">ofx_object</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">ot6DBuoy</span><span class="p">:</span>
+        <span class="n">ofx_object</span><span class="o">.</span><span class="n">VertexX</span> <span class="o">=</span> <span class="n">_sx</span>
+        <span class="n">ofx_object</span><span class="o">.</span><span class="n">VertexY</span> <span class="o">=</span> <span class="n">_sy</span>
+        <span class="n">ofx_object</span><span class="o">.</span><span class="n">VertexZ</span> <span class="o">=</span> <span class="n">_sz</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">_xyz_to_clipboard</span><span class="p">(</span><span class="n">_sx</span><span class="p">,</span><span class="n">_sy</span><span class="p">,</span><span class="n">_sz</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="Model"><a class="viewcode-back" href="../index.html#pyofx.Model">[docs]</a><span class="k">class</span> <span class="nc">Model</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;Wrapper around OrcFxAPI.Model to add extra functionality.</span>
+
+<span class="sd">    1. added path attribute so the location of the model on the disc can be found from:</span>
+
+<span class="sd">    &gt;&gt;&gt; model = Model(r&quot;C:\path\to\data_file.dat&quot;)</span>
+<span class="sd">    &gt;&gt;&gt; model.path</span>
+<span class="sd">    &quot;C:\path\to\data_file.dat&quot;</span>
+
+<span class="sd">    2. added a model_name attribute (added in v0.0.9) of the file name without path or</span>
+<span class="sd">    extensions:</span>
+
+<span class="sd">    &gt;&gt;&gt; model = Model(r&quot;C:\path\to\data_file.dat&quot;)</span>
+<span class="sd">    &gt;&gt;&gt; model.model_name</span>
+<span class="sd">    &quot;data_file&quot;</span>
+
+<span class="sd">    3. added the open method. This will open the model in the OrcaFlex GUI, if the model</span>
+<span class="sd">    does not exist on disc then a windows temp file will be created. Won&#39;t return until </span>
+<span class="sd">    the OrcaFlex.exe instance is closed.</span>
+
+<span class="sd">    &gt;&gt;&gt; model = Model()</span>
+<span class="sd">    &gt;&gt;&gt; model.open() # Opens a temp file in OrcaFlex.exe</span>
+
+<span class="sd">    4. added `objects_of_type()` to return a list of objects in the model of a certain types/</span>
+<span class="sd">    e.g. model.objects_of_type(&#39;Line&#39;)</span>
+
+<span class="sd">    &gt;&gt;&gt; model = Model()</span>
+<span class="sd">    &gt;&gt;&gt; model.CreateObject(otVessel, &#39;Bigger Boat&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; for v in model.objects_of_type(&#39;Vessel&#39;):</span>
+<span class="sd">    ...     print v.name</span>
+<span class="sd">    &quot;Bigger Boat&quot;</span>
+
+
+<span class="sd">    5. added attribute `lines`, shortcut to objects_of_type(&#39;Line&#39;)</span>
+
+<span class="sd">    6. added attribute `vessels`, shortcut to objects_of_type(&#39;Vessel&#39;)</span>
+
+<span class="sd">    7. added attribute `six_d_buoys`, shortcut to objects_of_type(&#39;6DBuoy&#39;)</span>
+
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;filename&#39;</span><span class="p">,</span> <span class="bp">False</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;filename&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">OFXError</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s"> Can&#39;t locate file {}.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">open</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+            <span class="n">fd</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkstemp</span><span class="p">(</span><span class="n">suffix</span><span class="o">=</span><span class="s">&quot;.dat&quot;</span><span class="p">)</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fd</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">SaveData</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">winreg</span><span class="o">.</span><span class="n">OpenKey</span><span class="p">(</span><span class="n">winreg</span><span class="o">.</span><span class="n">HKEY_LOCAL_MACHINE</span><span class="p">,</span>
+                            <span class="s">&#39;Software</span><span class="se">\\</span><span class="s">Orcina</span><span class="se">\\</span><span class="s">OrcaFlex</span><span class="se">\\</span><span class="s">Installation Directory&#39;</span><span class="p">,</span>
+                            <span class="mi">0</span><span class="p">,</span> <span class="n">winreg</span><span class="o">.</span><span class="n">KEY_READ</span> <span class="o">|</span> <span class="n">winreg</span><span class="o">.</span><span class="n">KEY_WOW64_32KEY</span><span class="p">)</span> <span class="k">as</span> <span class="n">key</span><span class="p">:</span>
+            <span class="n">installation_directory</span> <span class="o">=</span> <span class="n">winreg</span><span class="o">.</span><span class="n">QueryValueEx</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="s">&#39;Normal&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">_is64bit</span><span class="p">:</span>
+            <span class="n">cmd_line</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;OrcaFlex64.exe&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cmd_line</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;OrcaFlex.exe&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">installation_directory</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AssertionError</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">OFXError</span><span class="p">(</span>
+                <span class="s">&quot;{} might not be a directory&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">installation_directory</span><span class="p">))</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">installation_directory</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s">&quot;{} has been opened in the OrcaFlex GUI.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">check_output</span><span class="p">(</span><span class="n">cmd_line</span><span class="p">,</span> <span class="n">universal_newlines</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+            <span class="k">print</span> <span class="s">&quot;{} has been closed.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">CalledProcessError</span> <span class="k">as</span> <span class="n">cpe</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">OFXError</span><span class="p">(</span>
+                <span class="s">&quot;Error opening {} in OrcaFlex:</span><span class="se">\n</span><span class="s">{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">cpe</span><span class="o">.</span><span class="n">output</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">SaveData</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">SaveData</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">filename</span>
+
+    <span class="k">def</span> <span class="nf">LoadData</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">LoadData</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">filename</span>
+
+    <span class="k">def</span> <span class="nf">LoadSimulation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">LoadSimulation</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">filename</span>
+
+    <span class="k">def</span> <span class="nf">SaveSimulation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">SaveSimulation</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">filename</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">model_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)[</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Model.objects_of_type"><a class="viewcode-back" href="../api_docs.html#pyofx.Model.objects_of_type">[docs]</a>    <span class="k">def</span> <span class="nf">objects_of_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">type_name</span><span class="p">,</span> <span class="n">test</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;list of all objects in model with `typeName` equal to `type_name`</span>
+
+<span class="sd">        option to add a test function to further filter the list</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">typed_objects</span> <span class="o">=</span> <span class="nb">filter</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">o</span><span class="p">:</span> <span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">typeName</span> <span class="o">==</span> <span class="n">type_name</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="nb">basestring</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">o</span><span class="p">:</span> <span class="n">test</span> <span class="ow">in</span> <span class="n">o</span><span class="o">.</span><span class="n">Name</span><span class="p">,</span> <span class="n">typed_objects</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isfunction</span><span class="p">(</span><span class="n">test</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">filter</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="n">typed_objects</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">test</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">typed_objects</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">OFXError</span><span class="p">(</span>
+                <span class="p">(</span><span class="s">&quot;The test must be for a string in the object name or a filter function. &quot;</span><span class="p">,</span>
+                 <span class="s">&quot;Was passed an {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">test</span><span class="p">))))</span>
+</div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Model.lines"><a class="viewcode-back" href="../api_docs.html#pyofx.Model.lines">[docs]</a>    <span class="k">def</span> <span class="nf">lines</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; all the objects of type otLine &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects_of_type</span><span class="p">(</span><span class="s">&#39;Line&#39;</span><span class="p">)</span>
+</div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Model.vessels"><a class="viewcode-back" href="../api_docs.html#pyofx.Model.vessels">[docs]</a>    <span class="k">def</span> <span class="nf">vessels</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; all the objects of type otLine &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects_of_type</span><span class="p">(</span><span class="s">&#39;Vessel&#39;</span><span class="p">)</span>
+</div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Model.six_d_buoys"><a class="viewcode-back" href="../api_docs.html#pyofx.Model.six_d_buoys">[docs]</a>    <span class="k">def</span> <span class="nf">six_d_buoys</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; all the objects of type ot6DBuoy &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects_of_type</span><span class="p">(</span><span class="s">&#39;6D Buoy&#39;</span><span class="p">)</span>
+
+</div></div>
+<div class="viewcode-block" id="Models"><a class="viewcode-back" href="../index.html#pyofx.Models">[docs]</a><span class="k">class</span> <span class="nc">Models</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">r&quot;&quot;&quot;a generator which yields OrcaFlex files in directories.</span>
+
+<span class="sd">    Suppose we have saved some simulations in C:\Users\User\Project\OrcaFlex, to iterate over all</span>
+<span class="sd">    those simulations we can use:</span>
+
+<span class="sd">    &gt;&gt;&gt; for model in Models(r&quot;C:\Users\User\Project\OrcaFlex&quot;):</span>
+<span class="sd">    ...    print model</span>
+<span class="sd">    &lt;pyofx.Model object at 0x00000000031B6DD8&gt;</span>
+<span class="sd">    &lt;pyofx.Model object at 0x00000000031B6E80&gt;</span>
+
+<span class="sd">    Note that in the above example the generator yields Model objects of the .dat files. To return</span>
+<span class="sd">    the path to the file rather than the Model object we can pass return_model=False and to return</span>
+<span class="sd">    .sim file filetype=&quot;sim&quot;</span>
+
+
+<span class="sd">    There are various other options as detailed in the api_docs_:</span>
+
+<span class="sd">    .. autofunction:: pyofx.Models.__init__</span>
+
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">directories</span><span class="p">,</span> <span class="n">filetype</span><span class="o">=</span><span class="s">&quot;dat&quot;</span><span class="p">,</span>
+                 <span class="n">subdirectories</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">return_model</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                 <span class="n">filter_function</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">failed_function</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">virtual_logging</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        create a generator for Model objects.</span>
+
+<span class="sd">        Requires a directory as a string or a list of directories as strings. Other arguments are:</span>
+
+<span class="sd">        filetype         str    &quot;dat&quot;, &quot;yml&quot; or &quot;sim&quot; to yield data files or simulations (default=&quot;dat&quot;)</span>
+<span class="sd">        subdirectories   bool   if True then subdirectories will be included (default=False)</span>
+<span class="sd">        return_model     bool   if True then yield pyofx.Model objects, if False yield a string</span>
+<span class="sd">                                of the full path to the file. (default=True)</span>
+<span class="sd">        virtual_logging  bool   if True all returned Model instances will have virtual logging</span>
+<span class="sd">                                enabled. Makes post processing of large sim files mmmuch quicker.</span>
+<span class="sd">                                (default=False)</span>
+<span class="sd">        filter_function  func   function that returns True or False when passed the full filename.</span>
+<span class="sd">                                only models that pass the test will be returned.</span>
+<span class="sd">        failed_function  func   function to be performed on failed simulation file loads [TODO]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dirs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filetype</span> <span class="o">=</span> <span class="n">filetype</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">filetype</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;sim&#39;</span><span class="p">,</span> <span class="s">&#39;dat&#39;</span><span class="p">,</span> <span class="s">&#39;yml&#39;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="n">OFXError</span><span class="p">(</span>
+                <span class="s">&quot;filetype must be &#39;sim&#39;, &#39;dat&#39; or &#39;yml&#39; not &#39;{}&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filetype</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sub</span> <span class="o">=</span> <span class="n">subdirectories</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">return_model</span> <span class="o">=</span> <span class="n">return_model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">virtual_logging</span> <span class="o">=</span> <span class="n">virtual_logging</span>
+        <span class="k">if</span> <span class="n">filter_function</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">filter_function</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">_</span><span class="p">:</span> <span class="bp">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">filter_function</span> <span class="o">=</span> <span class="n">filter_function</span>
+
+        <span class="c"># TODO: Fix so that return_model=False cannot be checked for failed</span>
+        <span class="c"># simulation.</span>
+
+        <span class="k">if</span> <span class="n">return_model</span> <span class="ow">and</span> <span class="n">failed_function</span> <span class="ow">and</span> <span class="n">filetype</span> <span class="o">==</span> <span class="s">&quot;sim&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">failed_function</span> <span class="o">=</span> <span class="n">failed_function</span>
+        <span class="k">elif</span> <span class="n">failed_function</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">OFXError</span><span class="p">(</span>
+                <span class="s">&quot;Failed failed_function needs to be called on .sim files&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">directories</span><span class="p">,</span> <span class="nb">basestring</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dirs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">directories</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">_dir</span> <span class="ow">in</span> <span class="n">directories</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_dir</span><span class="p">,</span> <span class="nb">basestring</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="n">OFXError</span><span class="p">(</span><span class="s">&quot;&quot;&quot;Directory arguments need to be strings.</span>
+<span class="s">                     {} is a {}.&quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">_dir</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">_dir</span><span class="p">)))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">_dir</span><span class="p">):</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_dirs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_dir</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="n">OFXError</span><span class="p">(</span><span class="s">r&quot;&quot;&quot;{} does not appear to be a vaild directory.</span>
+<span class="s">                         hint:put an &#39;r&#39; before the string e.g. r&#39;c:\temp&#39;.</span>
+<span class="s">                         &quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">_dir</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">_dir</span><span class="p">)))</span>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">extension</span> <span class="o">=</span> <span class="s">&quot;.{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filetype</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">model_or_path</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+            <span class="n">model_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">return_model</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">virtual_logging</span><span class="p">:</span>
+                    <span class="n">_model</span> <span class="o">=</span> <span class="n">Model</span><span class="p">()</span>
+                    <span class="n">_model</span><span class="o">.</span><span class="n">UseVirtualLogging</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">filetype</span> <span class="o">==</span> <span class="s">&quot;sim&quot;</span><span class="p">:</span>
+                        <span class="n">_model</span><span class="o">.</span><span class="n">LoadSimulation</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">_model</span><span class="o">.</span><span class="n">LoadData</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="n">_model</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">Model</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">model_path</span>
+
+        <span class="n">test_fun</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">_rf</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">filter_function</span><span class="p">(</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_rf</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">_rf</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span> <span class="ow">and</span> <span class="n">_rf</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">extension</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dirs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sub</span><span class="p">:</span>
+                <span class="n">paths</span> <span class="o">=</span> <span class="p">[(</span><span class="n">r</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">walk</span><span class="p">(</span><span class="n">d</span><span class="p">)]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">paths</span> <span class="o">=</span> <span class="p">[(</span><span class="n">d</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">d</span><span class="p">)]</span>
+            <span class="k">for</span> <span class="n">root</span><span class="p">,</span> <span class="n">file_</span> <span class="ow">in</span> <span class="nb">filter</span><span class="p">(</span><span class="n">test_fun</span><span class="p">,</span> <span class="n">paths</span><span class="p">):</span>
+                <span class="k">yield</span> <span class="n">model_or_path</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">file_</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="Jobs"><a class="viewcode-back" href="../index.html#pyofx.Jobs">[docs]</a><span class="k">class</span> <span class="nc">Jobs</span><span class="p">():</span>
+
+    <span class="sd">r&quot;&quot;&quot; Python interface to Distributed OrcaFlex</span>
+
+<span class="sd">        &gt;&gt;&gt; from pyofx import Jobs</span>
+<span class="sd">        &gt;&gt;&gt; j = Jobs(r&quot;\\network\path\to\OrcFxAPI.dll&quot;)</span>
+
+<span class="sd">        Methods:</span>
+
+<span class="sd">        add(filepath, variables=None)</span>
+
+<span class="sd">        Adds an orcaflex file to the list of jobs with optional variables object.</span>
+
+<span class="sd">        &gt;&gt;&gt; j.add(r&quot;\\network\folder\Hs=2.2m_model.dat&quot;, {&#39;Hs&#39;:&#39;2.2m&#39;})</span>
+
+<span class="sd">        run(wait=False)</span>
+
+<span class="sd">        Submits jobs to Distributed Orcaflex. If wait is True it will not</span>
+<span class="sd">        return unitll all jobs have completed.</span>
+
+<span class="sd">        &gt;&gt;&gt; j.run(True)</span>
+<span class="sd">        &gt;&gt;&gt; print &quot;All jobs finished&quot; # This won&#39;t print unitll the simulations are complete.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dllname</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">jobs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">winreg</span><span class="o">.</span><span class="n">OpenKey</span><span class="p">(</span><span class="n">winreg</span><span class="o">.</span><span class="n">HKEY_LOCAL_MACHINE</span><span class="p">,</span>
+                                <span class="s">&#39;Software</span><span class="se">\\</span><span class="s">Orcina</span><span class="se">\\</span><span class="s">Distributed OrcaFlex</span><span class="se">\\</span><span class="s">Installation Directory&#39;</span><span class="p">,</span>
+                                <span class="mi">0</span><span class="p">,</span> <span class="n">winreg</span><span class="o">.</span><span class="n">KEY_READ</span> <span class="o">|</span> <span class="n">winreg</span><span class="o">.</span><span class="n">KEY_WOW64_32KEY</span><span class="p">)</span> <span class="k">as</span> <span class="n">key</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">installation_directory</span> <span class="o">=</span> <span class="n">winreg</span><span class="o">.</span><span class="n">QueryValueEx</span><span class="p">(</span>
+                    <span class="n">key</span><span class="p">,</span> <span class="s">&#39;Normal&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">WindowsError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">OFXError</span><span class="p">(</span><span class="s">&quot;Distributed OrcaFlex not found.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">dllname</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">with</span> <span class="n">winreg</span><span class="o">.</span><span class="n">OpenKey</span><span class="p">(</span><span class="n">winreg</span><span class="o">.</span><span class="n">HKEY_CURRENT_USER</span><span class="p">,</span>
+                                    <span class="s">&#39;Software</span><span class="se">\\</span><span class="s">Orcina</span><span class="se">\\</span><span class="s">Distributed OrcaFlex&#39;</span><span class="p">,</span>
+                                    <span class="mi">0</span><span class="p">,</span> <span class="n">winreg</span><span class="o">.</span><span class="n">KEY_READ</span> <span class="o">|</span> <span class="n">winreg</span><span class="o">.</span><span class="n">KEY_WOW64_32KEY</span><span class="p">)</span> <span class="k">as</span> <span class="n">key</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">dllname</span> <span class="o">=</span> <span class="n">winreg</span><span class="o">.</span><span class="n">QueryValueEx</span><span class="p">(</span>
+                        <span class="n">key</span><span class="p">,</span> <span class="s">&#39;DOFWorkingDirectory&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">WindowsError</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">with</span> <span class="n">winreg</span><span class="o">.</span><span class="n">OpenKey</span><span class="p">(</span><span class="n">winreg</span><span class="o">.</span><span class="n">HKEY_LOCAL_MACHINE</span><span class="p">,</span>
+                                        <span class="s">&#39;Software</span><span class="se">\\</span><span class="s">Orcina&#39;</span><span class="p">,</span>
+                                        <span class="mi">0</span><span class="p">,</span> <span class="n">winreg</span><span class="o">.</span><span class="n">KEY_READ</span> <span class="o">|</span> <span class="n">winreg</span><span class="o">.</span><span class="n">KEY_WOW64_32KEY</span><span class="p">)</span> <span class="k">as</span> <span class="n">key</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">dllname</span> <span class="o">=</span> <span class="n">winreg</span><span class="o">.</span><span class="n">QueryValueEx</span><span class="p">(</span>
+                            <span class="n">key</span><span class="p">,</span> <span class="s">&#39;DOFDefaultDLLFileName&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">OFXError</span><span class="p">(</span><span class="s">&quot;An attempt to find the location of OrcFxAPI.dll failed.&quot;</span>
+                                   <span class="s">&quot; You should set the registry keys as advised in the &quot;</span>
+                                   <span class="s">&quot; distributed OrcaFlex manual or pass the location of the dll&quot;</span>
+                                   <span class="s">&quot; as a parameter to the Jobs object.&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dllname</span> <span class="o">=</span> <span class="n">dllname</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_fd</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_path</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkstemp</span><span class="p">(</span><span class="n">suffix</span><span class="o">=</span><span class="s">&quot;.bat&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_path</span><span class="p">,</span> <span class="s">&#39;wb&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
+            <span class="sd">&quot;&quot;&quot;echo off\r\ncd &quot;%s&quot;\r\n&quot;&quot;&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">installation_directory</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_list_fd</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_list_path</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkstemp</span><span class="p">(</span>
+            <span class="n">suffix</span><span class="o">=</span><span class="s">&quot;.txt&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_list_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_list_path</span><span class="p">,</span> <span class="s">&#39;wb&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobs</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">job</span>
+
+<div class="viewcode-block" id="Jobs.add_file"><a class="viewcode-back" href="../api_docs.html#pyofx.Jobs.add_file">[docs]</a>    <span class="k">def</span> <span class="nf">add_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="n">variables</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adds a filepath (must be network path or a mapped drive) to the list of jobs to run.</span>
+<span class="sd">        Optionally takes a variables object to represent information about the job.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">filepath</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span> <span class="o">!=</span> <span class="s">r&quot;</span><span class="se">\\</span><span class="s">&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">get_unc_path</span><span class="p">(</span><span class="n">filepath</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+                <span class="n">filepath</span> <span class="o">=</span> <span class="n">get_unc_path</span><span class="p">(</span><span class="n">filepath</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="n">filepath</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">OFXError</span><span class="p">(</span>
+                    <span class="s">&quot;{} must be a network filepath (or mapped drive).&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filepath</span><span class="p">))</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+            <span class="n">a</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="k">del</span> <span class="n">a</span>
+        <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">OFXError</span><span class="p">(</span><span class="s">&quot;{} not a vaild file.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filepath</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">jobs</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">filepath</span><span class="p">,</span> <span class="n">variables</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_list_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;&quot;&quot;{}</span><span class="se">\r\n</span><span class="s">&quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filepath</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="Jobs.run"><a class="viewcode-back" href="../api_docs.html#pyofx.Jobs.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">statics</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Submit the jobslist to Distributed Orcaflex.</span>
+<span class="sd">        If wait=True then wait until the jobs complete to return.</span>
+<span class="sd">        To run statics only use statics=True</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">cmdline_template</span> <span class="o">=</span> <span class="s">&#39;&quot;{}&quot; -add {}{}-dllname=&quot;{}&quot; &quot;{}&quot;</span><span class="se">\r\n</span><span class="s">&#39;</span>
+        <span class="n">cmdline</span> <span class="o">=</span> <span class="n">cmdline_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">installation_directory</span><span class="p">,</span>
+                         <span class="s">&quot;dofcmd.exe&quot;</span><span class="p">),</span>
+            <span class="s">&quot;-wait &quot;</span> <span class="k">if</span> <span class="n">wait</span> <span class="k">else</span> <span class="s">&quot;&quot;</span><span class="p">,</span>
+            <span class="s">&quot;-statics &quot;</span> <span class="k">if</span> <span class="n">statics</span> <span class="k">else</span> <span class="s">&quot;&quot;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dllname</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_list_path</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">cmdline</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_fd</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_list_fd</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_list_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">batch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">check_output</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_path</span><span class="p">)</span>
+            <span class="k">print</span> <span class="s">&quot;Submitted {} jobs.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">jobs</span><span class="p">))</span>
+        <span class="k">except</span> <span class="n">CalledProcessError</span> <span class="k">as</span> <span class="n">cpe</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">OFXError</span><span class="p">(</span>
+                <span class="s">&quot;Error sumbitting to Distributed OrcaFlex:</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">+</span> <span class="n">cpe</span><span class="o">.</span><span class="n">output</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; ensure we have closed the files when the object is destroyed &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_list_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Jobs.list"><a class="viewcode-back" href="../api_docs.html#pyofx.Jobs.list">[docs]</a>    <span class="k">def</span> <span class="nf">list</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;list()</span>
+<span class="sd">        a generator for all the jobs on the Distributed Orcaflex Server. Each job will be returned</span>
+<span class="sd">        as a dictionary with the following keys: Job ID, Simulation file name including full path,</span>
+<span class="sd">        Owner, Status, Start Time, Completed Time, Name of machine last run on,</span>
+<span class="sd">        IP address of machine last run on, AutoSave interval, OrcFxAPI DLL version and</span>
+<span class="sd">        Status string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cwd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">installation_directory</span>
+        <span class="n">cmd2</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;dofcmd.exe&#39;</span><span class="p">,</span> <span class="s">&#39;-list&#39;</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">cwd</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">cwd</span><span class="p">)</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">Popen</span><span class="p">(</span><span class="n">cmd2</span><span class="p">,</span> <span class="n">cwd</span><span class="o">=</span><span class="n">cwd</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">PIPE</span><span class="p">,</span>
+                  <span class="n">universal_newlines</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">STDOUT</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">communicate</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">stdout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">whole_list</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">stdout</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n\n</span><span class="s">&#39;</span><span class="p">))</span>
+            <span class="n">head</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;ID&#39;</span><span class="p">,</span>
+                    <span class="s">&#39;File&#39;</span><span class="p">,</span>
+                    <span class="s">&#39;Owner&#39;</span><span class="p">,</span>
+                    <span class="s">&#39;Status&#39;</span><span class="p">,</span>
+                    <span class="s">&#39;Start Time&#39;</span><span class="p">,</span>
+                    <span class="s">&#39;Completed Time&#39;</span><span class="p">,</span>
+                    <span class="s">&#39;Name of machine&#39;</span><span class="p">,</span>
+                    <span class="s">&#39;IP address of machine&#39;</span><span class="p">,</span>
+                    <span class="s">&#39;AutoSave interval&#39;</span><span class="p">,</span>
+                    <span class="s">&#39;DLL version&#39;</span><span class="p">,</span>
+                    <span class="s">&#39;Status string&#39;</span><span class="p">]</span>
+            <span class="n">jobs</span> <span class="o">=</span> <span class="n">whole_list</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+            <span class="n">jobs</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
+            <span class="n">header</span> <span class="o">=</span> <span class="s">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">head</span><span class="p">)</span>
+            <span class="n">jobs_list</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">DictReader</span><span class="p">(</span>
+                <span class="n">StringIO</span><span class="o">.</span><span class="n">StringIO</span><span class="p">(</span><span class="n">header</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">jobs</span><span class="p">)))</span>
+
+            <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="n">jobs_list</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">job</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">OFXError</span><span class="p">(</span>
+                <span class="s">&quot;</span><span class="se">\n</span><span class="s"> Error communicating with the distrubuted OrcaFlex server:</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">+</span> <span class="n">stderr</span><span class="p">)</span>
+</div></div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="k">pass</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">pyofx 0.0.16 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Steven Rossiter.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
+    </div>
+  </body>
+</html>

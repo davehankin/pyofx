@@ -1,0 +1,303 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>API Documentation &mdash; pyofx 0.0.16 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.0.16',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="pyofx 0.0.16 documentation" href="index.html" />
+    <link rel="prev" title="Welcome to pyofx’s documentation!" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to pyofx’s documentation!"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">pyofx 0.0.16 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-pyofx">
+<span id="api-documentation"></span><h1>API Documentation<a class="headerlink" href="#module-pyofx" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="pyofx.Jobs">
+<em class="property">class </em><tt class="descclassname">pyofx.</tt><tt class="descname">Jobs</tt><big>(</big><em>dllname=None</em><big>)</big><a class="reference internal" href="_modules/pyofx.html#Jobs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyofx.Jobs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Python interface to Distributed OrcaFlex</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pyofx</span> <span class="kn">import</span> <span class="n">Jobs</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">j</span> <span class="o">=</span> <span class="n">Jobs</span><span class="p">(</span><span class="s">r&quot;</span><span class="se">\\</span><span class="s">network\path\to\OrcFxAPI.dll&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Methods:</p>
+<p>add(filepath, variables=None)</p>
+<p>Adds an orcaflex file to the list of jobs with optional variables object.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">j</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s">r&quot;</span><span class="se">\\</span><span class="s">network\folder\Hs=2.2m_model.dat&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s">&#39;Hs&#39;</span><span class="p">:</span><span class="s">&#39;2.2m&#39;</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>run(wait=False)</p>
+<p>Submits jobs to Distributed Orcaflex. If wait is True it will not
+return unitll all jobs have completed.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">j</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span> <span class="s">&quot;All jobs finished&quot;</span> <span class="c"># This won&#39;t print unitll the simulations are complete.</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="pyofx.Jobs.add_file">
+<tt class="descname">add_file</tt><big>(</big><em>filepath</em>, <em>variables=None</em><big>)</big><a class="reference internal" href="_modules/pyofx.html#Jobs.add_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyofx.Jobs.add_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds a filepath (must be network path or a mapped drive) to the list of jobs to run.
+Optionally takes a variables object to represent information about the job.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pyofx.Jobs.list">
+<tt class="descname">list</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pyofx.html#Jobs.list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyofx.Jobs.list" title="Permalink to this definition">¶</a></dt>
+<dd><p>a generator for all the jobs on the Distributed Orcaflex Server. Each job will be returned
+as a dictionary with the following keys: Job ID, Simulation file name including full path,
+Owner, Status, Start Time, Completed Time, Name of machine last run on,
+IP address of machine last run on, AutoSave interval, OrcFxAPI DLL version and
+Status string.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pyofx.Jobs.run">
+<tt class="descname">run</tt><big>(</big><em>wait=False</em>, <em>statics=False</em><big>)</big><a class="reference internal" href="_modules/pyofx.html#Jobs.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyofx.Jobs.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Submit the jobslist to Distributed Orcaflex.
+If wait=True then wait until the jobs complete to return.
+To run statics only use statics=True</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="pyofx.Model">
+<em class="property">class </em><tt class="descclassname">pyofx.</tt><tt class="descname">Model</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/pyofx.html#Model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyofx.Model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wrapper around OrcFxAPI.Model to add extra functionality.</p>
+<ol class="arabic simple">
+<li>added path attribute so the location of the model on the disc can be found from:</li>
+</ol>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">model</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="s">r&quot;C:\path o\data_file.dat&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">model</span><span class="o">.</span><span class="n">path</span>
+<span class="go">&quot;C:\path    o\data_file.dat&quot;</span>
+</pre></div>
+</div>
+<p>2. added a model_name attribute (added in v0.0.9) of the file name without path or
+extensions:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">model</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="s">r&quot;C:\path o\data_file.dat&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">model</span><span class="o">.</span><span class="n">model_name</span>
+<span class="go">&quot;data_file&quot;</span>
+</pre></div>
+</div>
+<p>3. added the open method. This will open the model in the OrcaFlex GUI, if the model
+does not exist on disc then a windows temp file will be created. Won&#8217;t return until 
+the OrcaFlex.exe instance is closed.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">model</span> <span class="o">=</span> <span class="n">Model</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">model</span><span class="o">.</span><span class="n">open</span><span class="p">()</span> <span class="c"># Opens a temp file in OrcaFlex.exe</span>
+</pre></div>
+</div>
+<p>4. added <cite>objects_of_type()</cite> to return a list of objects in the model of a certain types/
+e.g. model.objects_of_type(&#8216;Line&#8217;)</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">model</span> <span class="o">=</span> <span class="n">Model</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">model</span><span class="o">.</span><span class="n">CreateObject</span><span class="p">(</span><span class="n">otVessel</span><span class="p">,</span> <span class="s">&#39;Bigger Boat&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">objects_of_type</span><span class="p">(</span><span class="s">&#39;Vessel&#39;</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="k">print</span> <span class="n">v</span><span class="o">.</span><span class="n">name</span>
+<span class="go">&quot;Bigger Boat&quot;</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="5">
+<li>added attribute <cite>lines</cite>, shortcut to objects_of_type(&#8216;Line&#8217;)</li>
+<li>added attribute <cite>vessels</cite>, shortcut to objects_of_type(&#8216;Vessel&#8217;)</li>
+<li>added attribute <cite>six_d_buoys</cite>, shortcut to objects_of_type(&#8216;6DBuoy&#8217;)</li>
+</ol>
+<dl class="attribute">
+<dt id="pyofx.Model.lines">
+<tt class="descname">lines</tt><a class="reference internal" href="_modules/pyofx.html#Model.lines"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyofx.Model.lines" title="Permalink to this definition">¶</a></dt>
+<dd><p>all the objects of type otLine</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pyofx.Model.objects_of_type">
+<tt class="descname">objects_of_type</tt><big>(</big><em>type_name</em>, <em>test=None</em><big>)</big><a class="reference internal" href="_modules/pyofx.html#Model.objects_of_type"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyofx.Model.objects_of_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of all objects in model with <cite>typeName</cite> equal to <cite>type_name</cite></p>
+<p>option to add a test function to further filter the list</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="pyofx.Model.six_d_buoys">
+<tt class="descname">six_d_buoys</tt><a class="reference internal" href="_modules/pyofx.html#Model.six_d_buoys"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyofx.Model.six_d_buoys" title="Permalink to this definition">¶</a></dt>
+<dd><p>all the objects of type ot6DBuoy</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="pyofx.Model.vessels">
+<tt class="descname">vessels</tt><a class="reference internal" href="_modules/pyofx.html#Model.vessels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyofx.Model.vessels" title="Permalink to this definition">¶</a></dt>
+<dd><p>all the objects of type otLine</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="pyofx.Models">
+<em class="property">class </em><tt class="descclassname">pyofx.</tt><tt class="descname">Models</tt><big>(</big><em>directories</em>, <em>filetype='dat'</em>, <em>subdirectories=False</em>, <em>return_model=True</em>, <em>filter_function=None</em>, <em>failed_function=None</em>, <em>virtual_logging=False</em><big>)</big><a class="reference internal" href="_modules/pyofx.html#Models"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyofx.Models" title="Permalink to this definition">¶</a></dt>
+<dd><p>a generator which yields OrcaFlex files in directories.</p>
+<p>Suppose we have saved some simulations in C:UsersUserProjectOrcaFlex, to iterate over all
+those simulations we can use:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">Models</span><span class="p">(</span><span class="s">r&quot;C:\Users\User\Project\OrcaFlex&quot;</span><span class="p">):</span>
+<span class="gp">... </span>   <span class="k">print</span> <span class="n">model</span>
+<span class="go">&lt;pyofx.Model object at 0x00000000031B6DD8&gt;</span>
+<span class="go">&lt;pyofx.Model object at 0x00000000031B6E80&gt;</span>
+</pre></div>
+</div>
+<p>Note that in the above example the generator yields Model objects of the .dat files. To return
+the path to the file rather than the Model object we can pass return_model=False and to return
+.sim file filetype=&#8221;sim&#8221;</p>
+<p>There are various other options as detailed in the <a href="#id1"><span class="problematic" id="id2">api_docs_</span></a>:</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="pyofx.OFXError">
+<em class="property">exception </em><tt class="descclassname">pyofx.</tt><tt class="descname">OFXError</tt><a class="reference internal" href="_modules/pyofx.html#OFXError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyofx.OFXError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Branded errors so we know it&#8217;s our fault</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pyofx.buoy_drawing">
+<tt class="descclassname">pyofx.</tt><tt class="descname">buoy_drawing</tt><big>(</big><em>size</em>, <em>ofx_object=None</em><big>)</big><a class="reference internal" href="_modules/pyofx.html#buoy_drawing"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyofx.buoy_drawing" title="Permalink to this definition">¶</a></dt>
+<dd><p>scale the standard 6D buoy cuboid to width and height of <cite>size</cite> 
+(the default size is 6m)</p>
+<p>If ofx_object is provided then the object drawing will be changed
+otherwise the correct array is copied to the clipboard to paste 
+into the 6D Buoy drawing table.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pyofx.check_licence">
+<tt class="descclassname">pyofx.</tt><tt class="descname">check_licence</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pyofx.html#check_licence"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyofx.check_licence" title="Permalink to this definition">¶</a></dt>
+<dd><p>true if a licence can be found</p>
+<p>Useful for polling to wait for a free licence.
+See examples.py</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pyofx.dat_sim_paths">
+<tt class="descclassname">pyofx.</tt><tt class="descname">dat_sim_paths</tt><big>(</big><em>directory</em>, <em>name</em>, <em>yml=False</em><big>)</big><a class="reference internal" href="_modules/pyofx.html#dat_sim_paths"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyofx.dat_sim_paths" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tuple containing full .dat (or .yml if yml=True) and .sim filepath for 
+filename <cite>name</cite> in <cite>directory</cite>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pyofx.gamma_dnv">
+<tt class="descclassname">pyofx.</tt><tt class="descname">gamma_dnv</tt><big>(</big><em>h_s</em>, <em>t_p</em><big>)</big><a class="reference internal" href="_modules/pyofx.html#gamma_dnv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyofx.gamma_dnv" title="Permalink to this definition">¶</a></dt>
+<dd><p>the peak shape parameter (gamma) according to DNV-RP-H103 2.2.6.9</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pyofx.get_modes">
+<tt class="descclassname">pyofx.</tt><tt class="descname">get_modes</tt><big>(</big><em>model</em>, <em>line</em>, <em>from_mode=-1</em>, <em>to_mode=100</em><big>)</big><a class="reference internal" href="_modules/pyofx.html#get_modes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyofx.get_modes" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of (Mode Number, Modal Period, Modal Frequency) tuples for modal analysis of
+lines. Check specific range of modes with from_mode and to_mode.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pyofx.get_unc_path">
+<tt class="descclassname">pyofx.</tt><tt class="descname">get_unc_path</tt><big>(</big><em>local_name</em><big>)</big><a class="reference internal" href="_modules/pyofx.html#get_unc_path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyofx.get_unc_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>the UNC path of a mapped drive.</p>
+<p>Useful because some distributed OrcaFlex versions
+want only networked filepaths. Returns None if the drive is not mapped (e.g. C:)</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pyofx.vessel_drawing">
+<tt class="descclassname">pyofx.</tt><tt class="descname">vessel_drawing</tt><big>(</big><em>length</em>, <em>depth</em>, <em>beam</em>, <em>bow_scale=(0.9</em>, <em>0.95)</em>, <em>vessel_type=None</em><big>)</big><a class="reference internal" href="_modules/pyofx.html#vessel_drawing"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyofx.vessel_drawing" title="Permalink to this definition">¶</a></dt>
+<dd><p>scale the default OrcaFlex vessel type drawing</p>
+<p>Given a vessel of specifed length, depth and beam. Bow shape determined by the bow_scale
+parameter.</p>
+<p>if an <cite>OrcaFlexObject</cite> with <cite>typeName=otVesselType</cite> is passed as the vessel_type parameter then
+the drawing will be applied otherwise the correct array is copied to the clipboard to paste 
+into the vessel type drawing table.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Welcome to pyofx&#8217;s documentation!</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/api_docs.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to pyofx’s documentation!"
+             >previous</a> |</li>
+        <li><a href="index.html">pyofx 0.0.16 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Steven Rossiter.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
+    </div>
+  </body>
+</html>

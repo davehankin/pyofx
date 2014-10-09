@@ -5,11 +5,21 @@ PYOFX
 
 **You will need to have OrcaFlex and the Python API installed before any of this will work**
 
-Documentation to be completed...
+Documentation can be found at [pythonhosted.org/pyOfx/](http://pythonhosted.org/pyOfx/)
+
+TODO
+====
+
+* implement Models failed_function
+* Complete Documentation
+* Add more tests
+* Improve the way Jobs works
+
 
 CHANGELOG
 =========
-0.0.15 - Added clipboard support to vessel_drawing
+0.0.16 - Added Documentation (no really!) fixed the drawing helpers [#2](https://github.com/FLEXSIS/pyofx/issues/2)   
+0.0.15 - Added clipboard support to vessel_drawing 
 0.0.14 - Fix for [#1](https://github.com/FLEXSIS/pyofx/issues/1)  
 0.0.13 - Added Model.lines, Model.vessels, Model.six_d_buoys attributes
          various performance enhancements  

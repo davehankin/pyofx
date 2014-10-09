@@ -1,22 +1,25 @@
 import os
 from setuptools import setup
-
-
-def read(fname):
-    return open(os.path.join(os.path.dirname(__file__), fname)).read()
+README = os.path.join(os.path.dirname(__file__), 'README.md')
+try:
+    import pypandoc
+    LONG = pypandoc.convert(README, 'rst')
+except ImportError as e:
+    print e
+    LONG = open(README).read()
 
 setup(
     name="pyOfx",
-    version="0.0.15",
+    version="0.0.16",
     author="Steven Rossiter",
     author_email="steve@flexsis.co.uk",
     description=("A wrapper around OrcFxAPI by Orcina "
                  "to add extra functionality."),
     license = "MIT",
     keywords = "orcaflex api wrapper subsea engineering",
-    url = "http://packages.python.org/pyofx",
+    url = "https://pythonhosted.org/pyOfx/",
     packages=['pyofx'],
-    long_description=read('README.md'),
+    long_description=LONG,
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Environment :: Win32 (MS Windows)",

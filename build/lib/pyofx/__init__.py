@@ -1,7 +1,3 @@
-"""
-pyofx - OrcFxAPI wrapper
-
-"""
 from Tkinter import Tk
 import time
 import os
@@ -90,10 +86,10 @@ def dat_sim_paths(directory, name, yml=False):
         return os.path.join(directory, name + '.dat'), os.path.join(directory, name + '.sim')
 
 
-def xyz_to_clipboard(x,y,z):
+def _xyz_to_clipboard(x,y,z):
     """ place string for xyz arrary on the clipbaord to paste in drawing form"""
-    _xyz = zip([str(x) for x in _sx], [str(y)
-               for y in _sy], [str(z) for z in _sz])
+    _xyz = zip([str(_x) for _x in x], [str(_y)
+               for _y in y], [str(_z) for _z in z])
     s = ""
     for xyz in _xyz:
         s += "\t".join(xyz) + "\n"
@@ -107,13 +103,13 @@ def vessel_drawing(length, depth, beam, bow_scale=(0.9, 0.95), vessel_type=None)
     """scale the default OrcaFlex vessel type drawing
 
     Given a vessel of specifed length, depth and beam. Bow shape determined by the bow_scale
-    parameter. See examples vessel_scaling.png for sketch
+    parameter.
 
     if an `OrcaFlexObject` with `typeName=otVesselType` is passed as the vessel_type parameter then
     the drawing will be applied otherwise the correct array is copied to the clipboard to paste 
     into the vessel type drawing table.  
     """
-    # TODO: vessel_scaling.png
+
 
     l = length / 2.0
     d = depth / 2.0
@@ -125,18 +121,19 @@ def vessel_drawing(length, depth, beam, bow_scale=(0.9, 0.95), vessel_type=None)
     bow_scaling = [1, bow_scale[0], 1, 1, bow_scale[0],
                    bow_scale[1], bow_scale[0], 1, 1, bow_scale[0]]
 
-    z = [s * _x for s, _x in zip(bow_scaling, x)]
+    x = [s * _x for s, _x in zip(bow_scaling, x)]
 
-    if vessel_type and vessel_type.typeName == otVesselType:
+    if vessel_type and vessel_type.type == otVesselType:
         vessel_type.VertexX = x
         vessel_type.VertexY = y
         vessel_type.VertexZ = z
     else:
-        xyz_to_clipboard(x,y,z)
+        _xyz_to_clipboard(x,y,z)
 
 
 def buoy_drawing(size, ofx_object=None):
-    """scale the standard 6D buoy cuboid to `size`
+    """scale the standard 6D buoy cuboid to width and height of `size` 
+    (the default size is 6m)
 
     If ofx_object is provided then the object drawing will be changed
     otherwise the correct array is copied to the clipboard to paste 
@@ -146,15 +143,15 @@ def buoy_drawing(size, ofx_object=None):
     _x = [1, -1, -1, 1, 1, -1, -1, 1]
     _y = [1, 1, -1, -1, 1, 1, -1, -1]
     _z = [1, 1, 1, 1, -1, -1, -1, -1]
-    _sx = [float(size) * x for x in _x]
-    _sy = [float(size) * y for y in _y]
-    _sz = [float(size) * z for z in _z]
-    if ofx_object and ofx_object.typeName == ot6DBuoy:
+    _sx = [float(size)/2 * x for x in _x]
+    _sy = [float(size)/2 * y for y in _y]
+    _sz = [float(size)/2 * z for z in _z]
+    if ofx_object and ofx_object.type == ot6DBuoy:
         ofx_object.VertexX = _sx
         ofx_object.VertexY = _sy
         ofx_object.VertexZ = _sz
     else:
-        xyz_to_clipboard(x,y,z)
+        _xyz_to_clipboard(_sx,_sy,_sz)
 
 
 class Model(Model):
@@ -185,8 +182,8 @@ class Model(Model):
     e.g. model.objects_of_type('Line')
 
     >>> model = Model()
-    >>> model.CreateObject(otVessel)
-    >>> for v in model.objects_of_type('Vessel','Bigger Boat'):
+    >>> model.CreateObject(otVessel, 'Bigger Boat')
+    >>> for v in model.objects_of_type('Vessel'):
     ...     print v.name
     "Bigger Boat"
 
@@ -297,16 +294,38 @@ class Model(Model):
 
 
 class Models(object):
+    r"""a generator which yields OrcaFlex files in directories.
+
+    Suppose we have saved some simulations in C:\Users\User\Project\OrcaFlex, to iterate over all
+    those simulations we can use:
+
+    >>> for model in Models(r"C:\Users\User\Project\OrcaFlex"):
+    ...    print model
+    <pyofx.Model object at 0x00000000031B6DD8>
+    <pyofx.Model object at 0x00000000031B6E80>
+
+    Note that in the above example the generator yields Model objects of the .dat files. To return
+    the path to the file rather than the Model object we can pass return_model=False and to return
+    .sim file filetype="sim"
+
+
+    There are various other options as detailed in the api_docs_:
+
+    .. autofunction:: pyofx.Models.__init__
+
+
+    """
 
     def __init__(self, directories, filetype="dat",
                  subdirectories=False, return_model=True,
                  filter_function=None, failed_function=None,
                  virtual_logging=False):
         """
-        Generator for Model objects. Requires a directory as a string or a list of directories as
-        strings. Other arguments are:
+        create a generator for Model objects.
 
-        filetype         str    "dat" or "sim" to yield data files or simulations (default="dat")
+        Requires a directory as a string or a list of directories as strings. Other arguments are:
+
+        filetype         str    "dat", "yml" or "sim" to yield data files or simulations (default="dat")
         subdirectories   bool   if True then subdirectories will be included (default=False)
         return_model     bool   if True then yield pyofx.Model objects, if False yield a string
                                 of the full path to the file. (default=True)
@@ -386,7 +405,7 @@ class Models(object):
 
 class Jobs():
 
-    """ Python interface to Distributed OrcaFlex
+    r""" Python interface to Distributed OrcaFlex
 
         >>> from pyofx import Jobs
         >>> j = Jobs(r"\\network\path\to\OrcFxAPI.dll")

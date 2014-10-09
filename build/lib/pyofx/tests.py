@@ -4,6 +4,7 @@ import tempfile
 import random
 from os import path
 import shutil
+import sys
 from itertools import product
 
 
@@ -141,12 +142,37 @@ class TestModels(unittest.TestCase):
                 m.RunSimulation()
 
 
+class TestDrawings(unittest.TestCase):
+
+    def setUp(self):
+        self.m = Model()
+        self.sd = self.m.CreateObject(ot6DBuoy)
+        self.v = self.m.CreateObject(otVessel)
+
+    def test_vessel_drawing(self):
+        vt = self.m['Vessel Type1']
+        vessel_drawing(100, 16, 16, vessel_type=vt)
+        _x = [50.0, 45.0, -50.0, -50.0, 45.0, 47.5, 45.0, -50.0, -50.0, 45.0]
+        _y = [0.0, 8.0, 8.0, -8.0, -8.0, 0.0, 8.0, 8.0, -8.0, -8.0]
+        _z = [8.0, 8.0, 8.0, 8.0, 8.0, -8.0, -8.0, -8.0, -8.0, -8.0]
+        self.assertListEqual(list(vt.VertexX), _x)
+        self.assertListEqual(list(vt.VertexY), _y)
+        self.assertListEqual(list(vt.VertexZ), _z)
+        self.assertIsNone(vessel_drawing(100, 16, 16))
+
+    def test_six_d_buoy_drawing(self):
+        self.assertIsNone(buoy_drawing(2))
+        buoy_drawing(2, ofx_object=self.sd)
+        _x = [1.0, -1.0, -1.0, 1.0, 1.0, -1.0, -1.0, 1.0]
+        _y = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, -1.0]
+        _z = [1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0]
+        self.assertListEqual(list(self.sd.VertexX), _x)
+        self.assertListEqual(list(self.sd.VertexY), _y)
+        self.assertListEqual(list(self.sd.VertexZ), _z)
+
+
 if __name__ == '__main__':
-    import sys
     if check_licence:
-        current_module = sys.modules[__name__]
-        test_suite = unittest.loader.findTestCases(current_module)
-        runner = unittest.TextTestRunner()
-        runner.run(test_suite)
+        unittest.main()
     else:
         raise Exception("No OrcaFlex License!")
