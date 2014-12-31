@@ -1,5 +1,5 @@
 import unittest
-from __init__ import *
+from pyofx import *
 import tempfile
 import random
 from os import path
@@ -97,8 +97,8 @@ class TestModels(unittest.TestCase):
         self._temp_dir3 = tempfile.mkdtemp()
         self._temp_dirs = [self._temp_dir1, self._temp_dir2, self._temp_dir3]
 
-        for d, n in product(self._temp_dirs, range(1)):
-            print "Build model {} in {}".format(n, d)
+        for d, n in product(self._temp_dirs, list(range(1))):
+            print("Build model {} in {}".format(n, d))
             m = Model()
             m.general.StageDuration = [1, 2]
             m.general.ImplicitConstantTimeStep = 1

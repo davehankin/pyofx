@@ -5,3 +5,5 @@
 *.pydevproject
 *.sublime-project
 *.sublime*
+*.sln
+*.suo

@@ -10,7 +10,7 @@ except ImportError as e:
 
 setup(
     name="pyOfx",
-    version="0.0.16",
+    version="0.1.0",
     author="Steven Rossiter",
     author_email="steve@flexsis.co.uk",
     description=("A wrapper around OrcFxAPI by Orcina "
@@ -21,13 +21,14 @@ setup(
     packages=['pyofx'],
     long_description=LONG,
     classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 4 - Beta",
         "Environment :: Win32 (MS Windows)",
         "Topic :: Utilities",
         "Natural Language :: English",
         "License :: OSI Approved :: MIT License",
         "Operating System :: Microsoft :: Windows",
-        "Programming Language :: Python :: 2 :: Only",
+        "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3.4",
         "Topic :: Scientific/Engineering :: Physics"
     ],
 )

@@ -1,11 +1,15 @@
-from Tkinter import Tk
+try:
+    from tkinter import Tk
+except ImportError:
+    # python 2 then
+    from Tkinter import Tk
 import time
 import os
 import tempfile
 import ctypes
 import csv
 from subprocess import Popen, PIPE, STDOUT, check_output, CalledProcessError
-import StringIO
+import io
 import inspect
 import math
 
@@ -88,8 +92,8 @@ def dat_sim_paths(directory, name, yml=False):
 
 def _xyz_to_clipboard(x,y,z):
     """ place string for xyz arrary on the clipbaord to paste in drawing form"""
-    _xyz = zip([str(_x) for _x in x], [str(_y)
-               for _y in y], [str(_z) for _z in z])
+    _xyz = list(zip([str(_x) for _x in x], [str(_y)
+               for _y in y], [str(_z) for _z in z]))
     s = ""
     for xyz in _xyz:
         s += "\t".join(xyz) + "\n"
@@ -229,9 +233,9 @@ class Model(Model):
                 "{} might not be a directory".format(installation_directory))
         os.chdir(installation_directory)
         try:
-            print "{} has been opened in the OrcaFlex GUI.".format(self.path)
+            print("{} has been opened in the OrcaFlex GUI.".format(self.path))
             p = check_output(cmd_line, universal_newlines=True)
-            print "{} has been closed.".format(self.path)
+            print("{} has been closed.".format(self.path))
         except CalledProcessError as cpe:
             raise OFXError(
                 "Error opening {} in OrcaFlex:\n{}".format(self.path, cpe.output))
@@ -261,12 +265,11 @@ class Model(Model):
 
         option to add a test function to further filter the list
         """
-        typed_objects = filter(
-            lambda o: (o.typeName == type_name), self.objects)
-        if isinstance(test, basestring):
-            return filter(lambda o: test in o.Name, typed_objects)
+        typed_objects = [o for o in self.objects if (o.typeName == type_name)]
+        if isinstance(test, str):
+            return [o for o in typed_objects if test in o.Name]
         elif inspect.isfunction(test):
-            return filter(test, typed_objects)
+            return list(filter(test, typed_objects))
         elif test is None:
             return typed_objects
         else:
@@ -358,11 +361,11 @@ class Models(object):
             raise OFXError(
                 "Failed failed_function needs to be called on .sim files")
 
-        if isinstance(directories, basestring):
+        if isinstance(directories, str):
             self._dirs.append(directories)
         else:
             for _dir in directories:
-                if not isinstance(_dir, basestring):
+                if not isinstance(_dir, str):
                     raise OFXError("""Directory arguments need to be strings.
                      {} is a {}.""".format(_dir, type(_dir)))
                 else:
@@ -517,7 +520,7 @@ class Jobs():
         batch = self.batch_path.split('\\')
         try:
             p = check_output(self.batch_path)
-            print "Submitted {} jobs.".format(len(self.jobs))
+            print("Submitted {} jobs.".format(len(self.jobs)))
         except CalledProcessError as cpe:
             raise OFXError(
                 "Error sumbitting to Distributed OrcaFlex:\n" + cpe.output)
@@ -559,7 +562,7 @@ class Jobs():
             jobs.reverse()
             header = ','.join(head)
             jobs_list = csv.DictReader(
-                StringIO.StringIO(header + '\n' + '\n'.join(jobs)))
+                io.StringIO(header + '\n' + '\n'.join(jobs)))
 
             for job in jobs_list:
                 yield job

@@ -6,4 +6,3 @@ pyOfx.egg-info/dependency_links.txt
 pyOfx.egg-info/top_level.txt
 pyofx/__init__.py
 pyofx/examples.py
-pyofx/tests.py
